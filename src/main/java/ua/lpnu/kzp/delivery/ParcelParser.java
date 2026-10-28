@@ -1,5 +1,7 @@
 package ua.lpnu.kzp.delivery;
 
+import java.util.regex.Pattern;
+
 /**
  * Розбирає та перевіряє один рядок вхідного файла із записом про посилку.
  *
@@ -21,6 +23,11 @@ public final class ParcelParser {
     public static final int DELIVERY_DAYS = 3;
     /** Індекс ознаки експрес-доставлення. */
     public static final int EXPRESS = 4;
+
+    /* Десяткове число з крапкою: без знака «+», експоненти, суфіксів Java і пробілів. */
+    private static final Pattern DECIMAL = Pattern.compile("-?\\d+(\\.\\d+)?");
+    /* Ціле число без знака «+» і пробілів. */
+    private static final Pattern INTEGER = Pattern.compile("-?\\d+");
 
     /* Забороняє створення екземплярів службового класу. */
     private ParcelParser() {
@@ -64,11 +71,14 @@ public final class ParcelParser {
     }
 
     private static void checkWeightKg(String text) throws InvalidRecordException {
-        double weightKg;
-        try {
-            weightKg = Double.parseDouble(text);
-        } catch (NumberFormatException exception) {
+        // Double.parseDouble приймає NaN, Infinity, 1e3, 10d і пробіли, тому формат перевіряємо до перетворення.
+        if (!DECIMAL.matcher(text).matches()) {
             throw new InvalidRecordException("вага не є числом: \"%s\"".formatted(text));
+        }
+        double weightKg = Double.parseDouble(text);
+        // Число із сотень цифр перетворюється на Infinity.
+        if (Double.isInfinite(weightKg)) {
+            throw new InvalidRecordException("вага завелика");
         }
         // Посилка без ваги або з від'ємною вагою не має фізичного змісту.
         if (weightKg <= 0) {
@@ -77,12 +87,16 @@ public final class ParcelParser {
     }
 
     private static void checkDeliveryDays(String text) throws InvalidRecordException {
+        if (!INTEGER.matcher(text).matches()) {
+            throw new InvalidRecordException(
+                    "термін доставлення не є цілим числом: \"%s\"".formatted(text));
+        }
         int deliveryDays;
         try {
             deliveryDays = Integer.parseInt(text);
         } catch (NumberFormatException exception) {
-            throw new InvalidRecordException(
-                    "термін доставлення не є цілим числом: \"%s\"".formatted(text));
+            // Формат уже перевірено, тож виняток означає вихід за межі int.
+            throw new InvalidRecordException("термін доставлення завеликий: \"%s\"".formatted(text));
         }
         // Нуль днів допустимий: це доставлення в день відправлення.
         if (deliveryDays < 0) {

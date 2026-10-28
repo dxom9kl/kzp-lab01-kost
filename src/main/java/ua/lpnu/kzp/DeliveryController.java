@@ -6,8 +6,10 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import ua.lpnu.kzp.delivery.DeliverySummary;
 import ua.lpnu.kzp.delivery.InvalidRecordException;
 import ua.lpnu.kzp.delivery.ParcelParser;
@@ -56,16 +58,7 @@ public final class DeliveryController {
         }
 
         DeliverySummary summary = new DeliverySummary();
-        List<String> errors = new ArrayList<>();
-        for (int index = 0; index < lines.size(); index++) {
-            try {
-                summary.add(ParcelParser.parse(lines.get(index)));
-            } catch (InvalidRecordException exception) {
-                // Хибний рядок не зупиняє обробку, а потрапляє у звіт із номером і причиною.
-                errors.add(String.format(Locale.ROOT, "Рядок %d: %s", index + 1, exception.getMessage()));
-            }
-        }
-
+        List<String> errors = collect(lines, summary);
         String report = ReportFormatter.format(input, summary, errors);
         out.print(report);
         try {
@@ -76,5 +69,37 @@ public final class DeliveryController {
         }
         out.printf("%nЗвіт записано у файл: %s%n", output);
         return summary.isEmpty() ? ExitCode.DATA_ERROR : ExitCode.OK;
+    }
+
+    /*
+     * Додає коректні записи до показників і повертає причини пропуску решти рядків.
+     * Хибний рядок не зупиняє обробку, а потрапляє у звіт із номером і причиною.
+     */
+    private static List<String> collect(List<String> lines, DeliverySummary summary) {
+        List<String> errors = new ArrayList<>();
+        Map<String, Integer> firstLineById = new HashMap<>();
+        for (int index = 0; index < lines.size(); index++) {
+            int lineNumber = index + 1;
+            String[] fields;
+            try {
+                fields = ParcelParser.parse(lines.get(index));
+            } catch (InvalidRecordException exception) {
+                errors.add(skipped(lineNumber, exception.getMessage()));
+                continue;
+            }
+            // Ідентифікатор посилки унікальний: повторний запис спотворив би всі показники.
+            Integer firstLine = firstLineById.putIfAbsent(fields[ParcelParser.ID], lineNumber);
+            if (firstLine != null) {
+                errors.add(skipped(lineNumber, "повторний ідентифікатор посилки %s (уперше в рядку %d)"
+                        .formatted(fields[ParcelParser.ID], firstLine)));
+                continue;
+            }
+            summary.add(fields);
+        }
+        return errors;
+    }
+
+    private static String skipped(int lineNumber, String reason) {
+        return String.format(Locale.ROOT, "Рядок %d: %s", lineNumber, reason);
     }
 }

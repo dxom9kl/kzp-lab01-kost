@@ -1,0 +1,79 @@
+# Один workflow перевіряє той самий commit на трьох операційних системах.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Новий push у Pull Request скасовує застарілу перевірку тієї самої гілки.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: verify (${{ matrix.os }})
+    strategy:
+      # Збій на одній ОС не зупиняє перевірку на інших.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Однаковий JDK 21 на всіх ОС і кеш залежностей Maven.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Номер запуску потрапляє у version.properties і вивід --version.
+      - name: Verify on Unix
+        if: runner.os != 'Windows'
+        run: ./mvnw -B clean verify "-Dbuild.number=${{ github.run_number }}"
+
+      # На Windows Wrapper запускається окремим cmd-скриптом.
+      # Лапки не дають PowerShell розбити аргумент -D на частини.
+      - name: Verify on Windows
+        if: runner.os == 'Windows'
+        run: .\mvnw.cmd -B clean verify "-Dbuild.number=${{ github.run_number }}"
+
+      # Зібраний jar має запускатися й повідомляти версію з pom.xml та номер збірки.
+      # Для тегу v* версія з jar має збігатися з назвою тегу.
+      - name: Run jar
+        shell: bash
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          jar=$(ls target/lab01-*.jar)
+          version=$(java -jar "$jar" --version | tr -d '\r')
+          echo "--version: $version"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+${BUILD_NUMBER}$ ]]; then
+            echo "::error::Неочікуваний формат версії: $version"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$version" != "${GITHUB_REF_NAME#v}+${BUILD_NUMBER}" ]]; then
+            echo "::error::Тег $GITHUB_REF_NAME не відповідає версії в pom.xml ($version)"
+            exit 1
+          fi
+          java -Dstdout.encoding=UTF-8 -jar "$jar" --input data/input.csv --output out/report.txt
+
+      # Кожна ОС отримує власний артефакт, тому результати не перезаписуються.
+      - name: Upload jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: lab01-${{ matrix.os }}-build-${{ github.run_number }}
+          path: target/lab01-*.jar
+          if-no-files-found: error

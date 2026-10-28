@@ -1,0 +1,25 @@
+# Дефект має бути відтворюваним, інакше його неможливо перевірити.
+name: Дефект
+description: Повідомити про помилку в програмі
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Кроки відтворення
+      description: Команда та вхідні дані, з якими з'являється помилка.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Очікуваний результат
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактичний результат
+    validations:
+      required: true

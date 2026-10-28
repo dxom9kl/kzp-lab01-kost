@@ -1,0 +1,21 @@
+# Форма перетворює вимогу на завдання з перевірюваними критеріями готовності.
+name: Нова можливість
+description: Запланувати функціональну або інфраструктурну зміну
+title: "[feature] "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Опис
+      description: Що має з'явитися в програмі або в репозиторії?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Критерії готовності
+      description: Як перевірити, що завдання виконано?
+      placeholder: "- [ ] ..."
+    validations:
+      required: true

@@ -15,7 +15,10 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.propertiesEncoding>UTF-8</project.build.propertiesEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- Локальне значення; у CI його замінює параметр -Dbuild.number. -->
+        <build.number>local</build.number>
         <main.class>ua.lpnu.kzp.Main</main.class>
     </properties>
 
@@ -29,6 +32,14 @@
     </dependencies>
 
     <build>
+        <!-- Maven підставляє ${project.version} і ${build.number} у version.properties. -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

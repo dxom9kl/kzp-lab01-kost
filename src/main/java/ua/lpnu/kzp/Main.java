@@ -12,6 +12,10 @@ public final class Main {
      * @param args аргументи командного рядка
      */
     public static void main(String[] args) {
-        System.out.printf("Програму запущено%n");
+        if (args.length == 1 && "--version".equals(args[0])) {
+            System.out.printf("%s%n", BuildInfo.version());
+            return;
+        }
+        System.out.printf("Обробку записів буде додано в наступних змінах.%n");
     }
 }

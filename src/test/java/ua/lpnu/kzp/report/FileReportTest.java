@@ -27,6 +27,28 @@ class FileReportTest {
         assertEquals("Звіт", new String(Files.readAllBytes(file), StandardCharsets.UTF_8).substring(0, 4));
     }
 
+    /* BOM, який додають Excel і Блокнот, не потрапляє в перший рядок. */
+    @Test
+    void removesByteOrderMark() throws IOException {
+        Path file = directory.resolve("bom.csv");
+        Files.writeString(file, "﻿UA-1;2.00;Київ;9;true%nUA-2;4.00;Львів;3;false%n".formatted(),
+                StandardCharsets.UTF_8);
+
+        assertEquals(List.of("UA-1;2.00;Київ;9;true", "UA-2;4.00;Львів;3;false"), FileReport.readLines(file));
+    }
+
+    /* Порожній файл і файл лише з BOM читаються без помилок. */
+    @Test
+    void readsEmptyFiles() throws IOException {
+        Path empty = directory.resolve("empty.csv");
+        Path onlyBom = directory.resolve("bom-only.csv");
+        Files.writeString(empty, "", StandardCharsets.UTF_8);
+        Files.writeString(onlyBom, "﻿", StandardCharsets.UTF_8);
+
+        assertEquals(List.of(), FileReport.readLines(empty));
+        assertEquals(List.of(""), FileReport.readLines(onlyBom));
+    }
+
     /* Відсутні каталоги на шляху до звіту створюються автоматично. */
     @Test
     void createsMissingDirectories() throws IOException {

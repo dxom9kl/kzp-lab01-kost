@@ -33,6 +33,10 @@ class DeliveryControllerTest {
         return Files.readString(directory.resolve("report.txt"), StandardCharsets.UTF_8);
     }
 
+    private static boolean hasLine(String text, String regex) {
+        return text.lines().anyMatch(line -> line.matches(regex));
+    }
+
     /* Хибний рядок не зупиняє обробку, а потрапляє у звіт із номером і причиною. */
     @Test
     void continuesAfterInvalidLine() throws IOException {
@@ -40,7 +44,28 @@ class DeliveryControllerTest {
 
         assertEquals(ExitCode.OK, code);
         assertTrue(report().contains("Рядок 2: вага не є числом: \"abc\""), report());
-        assertTrue(report().lines().anyMatch(line -> line.matches("Коректних записів\\s+2")), report());
+        assertTrue(hasLine(report(), "Коректних записів\\s+2"), report());
+    }
+
+    /* Повторний ідентифікатор не враховується вдруге й називає рядок першої появи. */
+    @Test
+    void skipsDuplicateParcelId() throws IOException {
+        int code = process("UA-1;2.00;Київ;1;true", "UA-2;4.00;Львів;3;false", "UA-1;2.00;Київ;1;true");
+
+        assertEquals(ExitCode.OK, code);
+        assertTrue(report().contains("Рядок 3: повторний ідентифікатор посилки UA-1 (уперше в рядку 1)"),
+                report());
+        assertTrue(hasLine(report(), "Коректних записів\\s+2"), report());
+        assertTrue(hasLine(report(), "Експрес-доставлень\\s+1"), report());
+    }
+
+    /* Ідентифікатор хибного рядка не займає місця: наступний коректний запис з ним приймається. */
+    @Test
+    void acceptsIdAfterInvalidLineWithSameId() throws IOException {
+        process("UA-1;0;Київ;1;true", "UA-1;2.00;Київ;1;true");
+
+        assertTrue(hasLine(report(), "Коректних записів\\s+1"), report());
+        assertTrue(report().contains("Рядок 1: вага має бути додатною: 0"), report());
     }
 
     /* Консоль отримує той самий текст, що й файл, плюс повідомлення про запис. */

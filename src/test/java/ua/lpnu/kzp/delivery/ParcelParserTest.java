@@ -36,6 +36,13 @@ class ParcelParserTest {
         assertEquals("0", ParcelParser.parse("UA-1;1.00;Київ;0;false")[ParcelParser.DELIVERY_DAYS]);
     }
 
+    /* Вага записується цілим числом або десятковим із крапкою. */
+    @ParameterizedTest
+    @ValueSource(strings = {"2", "2.5", "0.75", "12.40"})
+    void acceptsDecimalWeight(String weightKg) throws InvalidRecordException {
+        assertEquals(weightKg, ParcelParser.parse("UA-1;" + weightKg + ";Київ;2;false")[ParcelParser.WEIGHT_KG]);
+    }
+
     /* Ознака експрес-доставлення приймає рівно два значення. */
     @ParameterizedTest
     @ValueSource(strings = {"true", "false"})
@@ -70,9 +77,22 @@ class ParcelParserTest {
                 arguments("UA-1;2,50;Одеса;3;false", "вага не є числом: \"2,50\""),
                 arguments("UA-1;0;Рівне;1;false", "вага має бути додатною: 0"),
                 arguments("UA-1;-3.00;Рівне;1;false", "вага має бути додатною: -3.00"),
+                arguments("UA-1;NaN;Суми;2;false", "вага не є числом: \"NaN\""),
+                arguments("UA-1;Infinity;Суми;2;false", "вага не є числом: \"Infinity\""),
+                arguments("UA-1;1e3;Суми;2;false", "вага не є числом: \"1e3\""),
+                arguments("UA-1;10d;Суми;2;false", "вага не є числом: \"10d\""),
+                arguments("UA-1;0x1p3;Суми;2;false", "вага не є числом: \"0x1p3\""),
+                arguments("UA-1;+2.00;Суми;2;false", "вага не є числом: \"+2.00\""),
+                arguments("UA-1; 2.00;Суми;2;false", "вага не є числом: \" 2.00\""),
+                arguments("UA-1;2.00 ;Суми;2;false", "вага не є числом: \"2.00 \""),
+                arguments("UA-1;" + "9".repeat(400) + ";Суми;2;false", "вага завелика"),
                 arguments("UA-1;1.00;Дніпро;2.5;false", "термін доставлення не є цілим числом: \"2.5\""),
                 arguments("UA-1;1.00;Дніпро;два;false", "термін доставлення не є цілим числом: \"два\""),
                 arguments("UA-1;1.00;Дніпро;-1;false", "від'ємний термін доставлення: -1"),
+                arguments("UA-1;1.00;Дніпро; 2;false", "термін доставлення не є цілим числом: \" 2\""),
+                arguments("UA-1;1.00;Дніпро;+2;false", "термін доставлення не є цілим числом: \"+2\""),
+                arguments("UA-1;1.00;Дніпро;99999999999;false",
+                        "термін доставлення завеликий: \"99999999999\""),
                 arguments("UA-1;1.00;Полтава;2;так",
                         "ознака експрес-доставлення має бути true або false: \"так\""),
                 arguments("UA-1;1.00;Полтава;2;TRUE",

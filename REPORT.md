@@ -98,6 +98,7 @@ args → ArgumentsParser.parse → Arguments
   UTF-8; компілятор з `-Xlint:all` і `failOnWarning` зупиняє збірку на будь-якому попередженні.
 - **Maven Wrapper** 3.3.4 (Maven 3.9.11): `mvnw`, `mvnw.cmd`, `.mvn/wrapper/`. У `.gitattributes`
   для `mvnw` задано LF, для `*.cmd` – CRLF; `mvnw` має в Git право на виконання.
+- **Ресурси**: maven-resources-plugin 3.3.1 фільтрує `version.properties` у UTF-8 (`propertiesEncoding`).
 - **Залежності**: JUnit Jupiter 5.12.2 зі `scope test`.
 - **Статичний аналіз**: SpotBugs 4.9.7.0, ціль `check` у фазі `verify`, найсуворіші налаштування
   (`effort Max`, `threshold Low`).
@@ -128,8 +129,8 @@ SemVer відокремлює метадані збірки знаком `+`, т
 $ java -jar target/lab01-1.0.0.jar --version     # локальна збірка
 1.0.0+local
 
-$ java -jar lab01-1.0.0.jar --version            # jar з артефакта CI № 6
-1.0.0+6
+$ java -jar lab01-1.0.0.jar --version            # jar з артефакта CI № 10
+1.0.0+10
 ```
 
 ## 6. GitHub Issues і Pull Request
@@ -147,6 +148,7 @@ $ java -jar lab01-1.0.0.jar --version            # jar з артефакта CI 
 | [#12](https://github.com/dxom9kl/kzp-lab01-kost/issues/12) Вага приймає NaN, Infinity і формати чисел Java (`bug`) | перевірка формату обох числових полів регулярними виразами | [#15](https://github.com/dxom9kl/kzp-lab01-kost/pull/15) |
 | [#13](https://github.com/dxom9kl/kzp-lab01-kost/issues/13) Повторний ідентифікатор посилки враховується двічі (`bug`) | контроль унікальності `id` у `DeliveryController` | [#15](https://github.com/dxom9kl/kzp-lab01-kost/pull/15) |
 | [#14](https://github.com/dxom9kl/kzp-lab01-kost/issues/14) BOM на початку файла потрапляє в ідентифікатор (`bug`) | видалення U+FEFF у `FileReport.readLines` | [#15](https://github.com/dxom9kl/kzp-lab01-kost/pull/15) |
+| [#17](https://github.com/dxom9kl/kzp-lab01-kost/issues/17) Лог збірки: кодування filtered properties не задано (`infra`) | `propertiesEncoding` у конфігурації maven-resources-plugin | [#18](https://github.com/dxom9kl/kzp-lab01-kost/pull/18) |
 
 Кожне `Closes #N` у описі Pull Request записано окремим рядком, тому GitHub закрив усі
 пов'язані Issues автоматично після merge.
@@ -241,18 +243,18 @@ BUILD SUCCESS
 
 CI:
 
-- успішний запуск CI № 6: https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40757546496
+- успішний запуск CI № 10: https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40758573375
 - артефакти jar:
-  - [lab01-ubuntu-latest-build-6](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40757546496/artifacts/12847101281)
-  - [lab01-windows-latest-build-6](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40757546496/artifacts/12845574872)
-  - [lab01-macos-latest-build-6](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40757546496/artifacts/12845654895)
+  - [lab01-ubuntu-latest-build-10](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40758573375/artifacts/12847426551)
+  - [lab01-windows-latest-build-10](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40758573375/artifacts/12846643898)
+  - [lab01-macos-latest-build-10](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40758573375/artifacts/12847176835)
 - результати на трьох ОС (тести, SpotBugs, пакування, `--version`, запуск jar):
 
   | ОС | Результат |
   |---|---|
-  | ubuntu-latest | [success](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40757546496/job/123060409751) |
-  | windows-latest | [success](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40757546496/job/123060409785) |
-  | macos-latest | [success](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40757546496/job/123060409362) |
+  | ubuntu-latest | [success](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40758573375/job/123064002802) |
+  | windows-latest | [success](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40758573375/job/123064002938) |
+  | macos-latest | [success](https://github.com/dxom9kl/kzp-lab01-kost/actions/runs/40758573375/job/123064002998) |
 - Git-тег: `v1.0.0`
 
 ## 9. Документація
@@ -293,9 +295,11 @@ Claude для Windows. Викладач на занятті дозволив в�
   узято в лапки, так само як `-Dbuild.number` у CI;
 - кирилична назва проєкту в `<name>` спотворювалася в лозі Maven у консолі Windows –
   назву замінено на латинську;
-- maven-resources-plugin попереджав про невизначене кодування `.properties` – додано
-  `project.build.propertiesEncoding`;
-- maven-shade-plugin створював `dependency-reduced-pom.xml` у корені проєкту – вимкнено.
+- maven-resources-plugin попереджав про невизначене кодування `.properties`. Властивість
+  `project.build.propertiesEncoding` не допомогла, бо параметр `propertiesEncoding` не має user
+  property, тож кодування задано в конфігурації плагіна (#17);
+- maven-shade-plugin за замовчуванням створює `dependency-reduced-pom.xml` у корені проєкту –
+  це вимкнено параметром `createDependencyReducedPom`.
 
 **Мій внесок:**
 

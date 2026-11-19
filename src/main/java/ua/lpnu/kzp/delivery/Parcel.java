@@ -5,14 +5,14 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Посилка – незмінний запис про одне доставлення.
+ * Посилка – спільний незмінний тип звичайних та експрес-доставлень.
  *
- * <p>Конструктор перевіряє всі інваріанти, тому коректність об'єкта не залежить від способу
- * його створення: ідентифікатор і місто не порожні, вага – додатне скінченне число, термін
- * доставлення не від'ємний. Фабрика {@link #fromCsv(String)} створює посилку з рядка вхідного
- * файла.
+ * <p>Базовий клас зберігає спільні поля й перевіряє їхні інваріанти: ідентифікатор і місто не
+ * порожні, вага – додатне скінченне число, термін доставлення не від'ємний. Підтипи визначають вид
+ * доставлення, розрахунковий термін і вартість. Фабрика {@link #fromCsv(String)} створює потрібний
+ * підтип із рядка вхідного файла.
  */
-public final class Parcel {
+public abstract class Parcel {
     private static final String SEPARATOR = ";";
     private static final int FIELD_COUNT = 5;
     private static final int ID = 0;
@@ -30,36 +30,36 @@ public final class Parcel {
     /* Ціле число без знака «+» і пробілів. */
     private static final Pattern INTEGER = Pattern.compile("-?\\d+");
 
+    /* Демонстраційний тариф, а не ціни реального перевізника. */
+    private static final double BASE_COST = 40.0;
+    private static final double COST_PER_KG = 10.0;
+
     private final String id;
     private final double weightKg;
     private final String city;
     private final int deliveryDays;
-    private final boolean express;
 
     /**
-     * Створює коректну посилку.
+     * Створює спільну частину коректної посилки.
      *
      * @param id ідентифікатор посилки, непорожній
      * @param weightKg вага в кілограмах, додатне скінченне число
      * @param city місто доставлення, непорожнє
-     * @param deliveryDays термін доставлення в днях; нуль означає доставлення в день відправлення
-     * @param express {@code true}, якщо це експрес-доставлення
+     * @param deliveryDays плановий термін у днях; нуль означає доставлення в день відправлення
      * @throws NullPointerException якщо {@code id} або {@code city} дорівнює {@code null}
      * @throws IllegalArgumentException якщо значення порушує інваріант посилки
      */
-    public Parcel(String id, double weightKg, String city, int deliveryDays, boolean express) {
-        // Перевірки виконуються до присвоєння, тому некоректний об'єкт не створюється.
-        Objects.requireNonNull(id, "ідентифікатор посилки не може бути null");
-        Objects.requireNonNull(city, "місто не може бути null");
-        requireText(id, EMPTY_ID);
-        checkWeightKg(weightKg, Double.toString(weightKg));
-        requireText(city, EMPTY_CITY);
-        checkDeliveryDays(deliveryDays);
+    protected Parcel(String id, double weightKg, String city, int deliveryDays) {
+        // Значення перевіряються до створення об'єкта, тому некоректна посилка не з'являється навіть частково.
+        this(validId(id), validWeightKg(weightKg), validCity(city), validDeliveryDays(deliveryDays), true);
+    }
+
+    /* Присвоює вже перевірені значення; параметр validated лише відрізняє цей конструктор. */
+    private Parcel(String id, double weightKg, String city, int deliveryDays, boolean validated) {
         this.id = id;
         this.weightKg = weightKg;
         this.city = city;
         this.deliveryDays = deliveryDays;
-        this.express = express;
     }
 
     /**
@@ -70,7 +70,7 @@ public final class Parcel {
      * називає першу знайдену проблему.
      *
      * @param line рядок вхідного файла
-     * @return посилка з полями рядка
+     * @return посилка підтипу, який задає поле {@code express}
      * @throws NullPointerException якщо {@code line} дорівнює {@code null}
      * @throws IllegalArgumentException якщо рядок не є коректним записом
      */
@@ -94,7 +94,10 @@ public final class Parcel {
         double weightKg = parseWeightKg(fields[WEIGHT_KG]);
         int deliveryDays = parseDeliveryDays(fields[DELIVERY_DAYS]);
         boolean express = parseExpress(fields[EXPRESS]);
-        return new Parcel(fields[ID], weightKg, fields[CITY], deliveryDays, express);
+        // Єдине місце вибору підтипу: далі програма працює лише зі спільним типом Parcel.
+        return express
+                ? new ExpressParcel(fields[ID], weightKg, fields[CITY], deliveryDays)
+                : new RegularParcel(fields[ID], weightKg, fields[CITY], deliveryDays);
     }
 
     /**
@@ -102,7 +105,7 @@ public final class Parcel {
      *
      * @return непорожній ідентифікатор
      */
-    public String getId() {
+    public final String getId() {
         return id;
     }
 
@@ -111,7 +114,7 @@ public final class Parcel {
      *
      * @return вага в кілограмах
      */
-    public double getWeightKg() {
+    public final double getWeightKg() {
         return weightKg;
     }
 
@@ -120,16 +123,16 @@ public final class Parcel {
      *
      * @return непорожня назва міста
      */
-    public String getCity() {
+    public final String getCity() {
         return city;
     }
 
     /**
-     * Повертає термін доставлення.
+     * Повертає плановий термін доставлення з вхідних даних.
      *
      * @return термін у днях
      */
-    public int getDeliveryDays() {
+    public final int getDeliveryDays() {
         return deliveryDays;
     }
 
@@ -138,8 +141,39 @@ public final class Parcel {
      *
      * @return {@code true} для експрес-доставлення
      */
-    public boolean isExpress() {
-        return express;
+    public final boolean isExpress() {
+        // Кожна константа enum існує в одному екземплярі, тому порівняння через == коректне.
+        return getKind() == DeliveryKind.EXPRESS;
+    }
+
+    /**
+     * Повертає вид доставлення, який відповідає підтипу посилки.
+     *
+     * @return вид доставлення
+     */
+    public abstract DeliveryKind getKind();
+
+    /**
+     * Обчислює розрахунковий термін доставлення.
+     *
+     * @return термін у днях
+     */
+    public abstract int calculatedDays();
+
+    /**
+     * Обчислює вартість доставлення за демонстраційним тарифом.
+     *
+     * @return вартість у гривнях
+     */
+    public abstract double calculatedCost();
+
+    /**
+     * Обчислює базову вартість доставлення за вагою посилки.
+     *
+     * @return базова вартість у гривнях
+     */
+    protected final double baseCost() {
+        return BASE_COST + weightKg * COST_PER_KG;
     }
 
     /**
@@ -148,10 +182,32 @@ public final class Parcel {
      * @return рядок вигляду {@code UA-1001: 2.50 кг, Львів, 1 дн., експрес}
      */
     @Override
-    public String toString() {
+    public final String toString() {
         // Locale.ROOT робить крапку десятковим роздільником на будь-якій ОС.
         return String.format(Locale.ROOT, "%s: %.2f кг, %s, %d дн., %s",
-                id, weightKg, city, deliveryDays, express ? "експрес" : "звичайне");
+                id, weightKg, city, deliveryDays, getKind().label());
+    }
+
+    private static String validId(String id) {
+        Objects.requireNonNull(id, "ідентифікатор посилки не може бути null");
+        requireText(id, EMPTY_ID);
+        return id;
+    }
+
+    private static double validWeightKg(double weightKg) {
+        checkWeightKg(weightKg, Double.toString(weightKg));
+        return weightKg;
+    }
+
+    private static String validCity(String city) {
+        Objects.requireNonNull(city, "місто не може бути null");
+        requireText(city, EMPTY_CITY);
+        return city;
+    }
+
+    private static int validDeliveryDays(int deliveryDays) {
+        checkDeliveryDays(deliveryDays);
+        return deliveryDays;
     }
 
     private static void requireText(String value, String reason) {

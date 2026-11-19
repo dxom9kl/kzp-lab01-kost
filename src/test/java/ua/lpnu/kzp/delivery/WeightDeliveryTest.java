@@ -16,7 +16,7 @@ class WeightDeliveryTest {
     private static final double DELTA = 0.0001;
 
     private static Parcel parcel(double weightKg, int deliveryDays) {
-        return new Parcel("UA-1", weightKg, "Київ", deliveryDays, false);
+        return new RegularParcel("UA-1", weightKg, "Київ", deliveryDays);
     }
 
     /* Методи доступу повертають значення компонентів. */

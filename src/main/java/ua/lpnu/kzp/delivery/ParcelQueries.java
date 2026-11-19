@@ -60,7 +60,7 @@ public final class ParcelQueries {
      * Рахує посилки в кожному місті.
      *
      * @param parcels посилки
-     * @return кількість посилок за містом, упорядкована за назвою міста
+     * @return кількість посилок за містом; назви міст упорядковано методом {@link String#compareTo(String)}
      */
     public static Map<String, Long> countByCity(List<Parcel> parcels) {
         return streamOf(parcels)
@@ -83,7 +83,8 @@ public final class ParcelQueries {
      *
      * @param parcels посилки
      * @param limit найбільша кількість посилок у результаті, не від'ємна
-     * @return посилки за спаданням ваги, а за однакової ваги – за зростанням номера
+     * @return посилки за спаданням ваги, а за однакової ваги – за номером у порядку
+     *         {@link String#compareTo(String)}
      * @throws IllegalArgumentException якщо {@code limit} від'ємний
      */
     public static List<Parcel> topByWeight(List<Parcel> parcels, int limit) {
@@ -149,15 +150,16 @@ public final class ParcelQueries {
     }
 
     /**
-     * Обчислює загальну вартість доставлення.
+     * Обчислює загальну вартість доставлення послідовним додаванням.
      *
      * @param parcels посилки
      * @return сума вартостей, які повертають фактичні підтипи посилок
      */
     public static double totalCost(List<Parcel> parcels) {
+        // DoubleStream.sum використовує компенсоване підсумовування й може дати інший результат.
         return streamOf(parcels)
                 .mapToDouble(Parcel::calculatedCost)
-                .sum();
+                .reduce(0.0, Double::sum);
     }
 
     /* Кожен запит отримує новий потік, бо використаний потік не можна запустити вдруге. */

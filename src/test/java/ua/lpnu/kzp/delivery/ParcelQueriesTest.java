@@ -84,6 +84,15 @@ class ParcelQueriesTest {
         assertEquals(5, top.size());
     }
 
+    /* За однакової ваги першою стає посилка з меншим номером, хоч у вході вона друга. */
+    @Test
+    void topByWeightBreaksTiesById() {
+        Parcel second = new RegularParcel("UA-2", 5.0, "Київ", 1);
+        Parcel first = new RegularParcel("UA-1", 5.0, "Львів", 1);
+
+        assertEquals(List.of(first, second), ParcelQueries.topByWeight(List.of(second, first), 2));
+    }
+
     /* Нульова межа дає порожній результат, а завелика повертає всі посилки. */
     @Test
     void topByWeightHandlesLimitBounds() {
@@ -240,7 +249,9 @@ class ParcelQueriesTest {
         assertEquals(loopInTransit, ParcelQueries.inTransit(PARCELS));
         assertEquals(loopCities, ParcelQueries.cities(PARCELS));
         assertEquals(loopCounts, ParcelQueries.countByCity(PARCELS));
+        assertEquals(PARCELS.size(), statistics.getCount());
         assertEquals(loopSum, statistics.getSum(), DELTA);
+        assertEquals(loopSum / PARCELS.size(), statistics.getAverage(), DELTA);
         assertEquals(loopMin, statistics.getMin(), DELTA);
         assertEquals(loopMax, statistics.getMax(), DELTA);
         assertEquals(loopTop.subList(0, ParcelQueries.TOP_SIZE),

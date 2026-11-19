@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -55,7 +56,7 @@ class RegularParcelTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> new RegularParcel("UA-1", 1.0, "Київ", 3, reserveDays));
 
-        assertEquals("від'ємний резерв днів: %d".formatted(reserveDays), exception.getMessage());
+        assertEquals(String.format(Locale.ROOT, "від'ємний резерв днів: %d", reserveDays), exception.getMessage());
     }
 
     /* Резерв, який переповнив би розрахунковий термін, відхиляється. */

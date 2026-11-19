@@ -119,7 +119,8 @@ class ParcelTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> parcel("UA-1", 1.0, "Київ", deliveryDays, false));
 
-        assertEquals("від'ємний термін доставлення: %d".formatted(deliveryDays), exception.getMessage());
+        assertEquals(String.format(Locale.ROOT, "від'ємний термін доставлення: %d", deliveryDays),
+                exception.getMessage());
     }
 
     /* toString показує всі поля, а вагу – з двома знаками після крапки. */

@@ -1,20 +1,18 @@
 package ua.lpnu.kzp.delivery;
 
-import java.util.EnumMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 /**
- * Накопичує показники варіанта за коректними посилками: кількість записів, середню вагу,
+ * Обчислює показники варіанта за коректними посилками: кількість записів, середню вагу,
  * найбільший термін доставлення, кількість експрес-доставлень і загальну вартість.
  *
- * <p>Клас працює лише зі спільним типом {@link Parcel}, тому новий підтип посилки не потребує його змін.
+ * <p>Клас зберігає посилки спільного типу {@link Parcel}, а показники за їхніми значеннями обчислює
+ * потоковими запитами {@link ParcelQueries}, тому новий підтип посилки не потребує його змін.
  */
 public final class DeliverySummary {
-    private final Map<DeliveryKind, Integer> countByKind = new EnumMap<>(DeliveryKind.class);
-    private WeightDelivery totals = WeightDelivery.EMPTY;
-    private double totalCost;
-    private Parcel longestDelivery;
+    private final List<Parcel> parcels = new ArrayList<>();
 
     /** Створює порожній набір показників. */
     public DeliverySummary() {
@@ -22,7 +20,7 @@ public final class DeliverySummary {
     }
 
     /**
-     * Обчислює показники за списком посилок.
+     * Створює набір показників для списку посилок.
      *
      * @param parcels коректні посилки в порядку вхідного файла
      * @return показники всіх посилок списку
@@ -39,14 +37,7 @@ public final class DeliverySummary {
      * @param parcel коректна посилка будь-якого підтипу
      */
     public void add(Parcel parcel) {
-        // Перший запис задає початковий максимум; за рівного терміну лишається перша посилка.
-        if (longestDelivery == null || parcel.calculatedDays() > totals.maxDeliveryDays()) {
-            longestDelivery = parcel;
-        }
-        totals = totals.plus(parcel);
-        // Вид і вартість повертає фактичний підтип, тому розгалуження за типом посилки не потрібне.
-        countByKind.merge(parcel.getKind(), 1, Integer::sum);
-        totalCost += parcel.calculatedCost();
+        parcels.add(Objects.requireNonNull(parcel, "посилка не може бути null"));
     }
 
     /**
@@ -55,7 +46,7 @@ public final class DeliverySummary {
      * @return кількість доданих записів
      */
     public int count() {
-        return totals.count();
+        return parcels.size();
     }
 
     /**
@@ -64,7 +55,7 @@ public final class DeliverySummary {
      * @return {@code true}, якщо коректних записів немає
      */
     public boolean isEmpty() {
-        return totals.count() == 0;
+        return parcels.isEmpty();
     }
 
     /**
@@ -73,7 +64,7 @@ public final class DeliverySummary {
      * @return середня вага в кілограмах або {@code 0.0}, якщо записів немає
      */
     public double averageWeightKg() {
-        return totals.averageWeightKg();
+        return ParcelQueries.totals(parcels).averageWeightKg();
     }
 
     /**
@@ -82,7 +73,7 @@ public final class DeliverySummary {
      * @return термін у днях або {@code 0}, якщо записів немає
      */
     public int maxDeliveryDays() {
-        return totals.maxDeliveryDays();
+        return ParcelQueries.totals(parcels).maxDeliveryDays();
     }
 
     /**
@@ -91,7 +82,7 @@ public final class DeliverySummary {
      * @return ідентифікатор або порожній рядок, якщо записів немає
      */
     public String longestDeliveryId() {
-        return longestDelivery == null ? "" : longestDelivery.getId();
+        return ParcelQueries.longestDelivery(parcels).map(Parcel::getId).orElse("");
     }
 
     /**
@@ -100,7 +91,7 @@ public final class DeliverySummary {
      * @return назва міста або порожній рядок, якщо записів немає
      */
     public String longestDeliveryCity() {
-        return longestDelivery == null ? "" : longestDelivery.getCity();
+        return ParcelQueries.longestDelivery(parcels).map(Parcel::getCity).orElse("");
     }
 
     /**
@@ -119,7 +110,7 @@ public final class DeliverySummary {
      * @return кількість посилок цього виду
      */
     public int countOf(DeliveryKind kind) {
-        return countByKind.getOrDefault(kind, 0);
+        return ParcelQueries.countByKind(parcels).getOrDefault(kind, 0L).intValue();
     }
 
     /**
@@ -128,6 +119,6 @@ public final class DeliverySummary {
      * @return вартість у гривнях або {@code 0.0}, якщо записів немає
      */
     public double totalCost() {
-        return totalCost;
+        return ParcelQueries.totalCost(parcels);
     }
 }

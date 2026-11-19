@@ -2,6 +2,7 @@ package ua.lpnu.kzp.cli;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.stream.Collectors;
 
 /** Розбирає аргументи командного рядка та формує текст довідки. */
 public final class ArgumentsParser {
@@ -62,9 +63,9 @@ public final class ArgumentsParser {
      * @return довідка, кожен рядок якої завершено роздільником поточної ОС
      */
     public static String usage() {
-        StringBuilder text = new StringBuilder();
-        USAGE.lines().forEach(line -> text.append(line).append(System.lineSeparator()));
-        return text.toString();
+        return USAGE.lines()
+                .map(line -> line + System.lineSeparator())
+                .collect(Collectors.joining());
     }
 
     private static Path pathAfter(String[] args, int optionIndex) throws UsageException {

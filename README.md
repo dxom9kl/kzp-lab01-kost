@@ -2,11 +2,14 @@
 
 [![CI](https://github.com/dxom9kl/kzp-lab01-kost/actions/workflows/ci.yml/badge.svg)](https://github.com/dxom9kl/kzp-lab01-kost/actions/workflows/ci.yml)
 
-Лабораторна робота № 1 з курсу «Кросплатформні засоби програмування», варіант 15.
+Лабораторні роботи № 1 і № 2 з курсу «Кросплатформні засоби програмування», варіант 15.
 
 Програма читає записи про доставлення посилок із CSV-файла, перевіряє кожен рядок,
 обчислює чотири показники й записує однаковий звіт у консоль і текстовий файл.
 Хибні рядки не зупиняють роботу: у звіті вказано номер рядка та причину пропуску.
+
+Поточний стан відповідає ЛР № 2: записи подано об'єктами `Parcel`, а зовнішня поведінка
+лишилася такою, як у ЛР № 1. Звіти: [ЛР № 2](REPORT.md), [ЛР № 1](reports/lab01.md).
 
 ## Формат входу
 
@@ -36,6 +39,42 @@ id;weightKg;city;deliveryDays;express
 3. Найбільший термін доставлення разом з ідентифікатором і містом посилки.
 4. Кількість експрес-доставлень.
 
+## Модель даних
+
+Кожен коректний рядок стає незмінним об'єктом
+[`Parcel`](src/main/java/ua/lpnu/kzp/delivery/Parcel.java). Його поля `private final`, сеттерів
+немає, а значення читаються методами `getId()`, `getWeightKg()`, `getCity()`,
+`getDeliveryDays()` і `isExpress()`.
+
+Конструктор перевіряє інваріанти, тому хибний об'єкт неможливо створити:
+
+| Поле | Інваріант | Причина відхилення |
+|---|---|---|
+| `id` | не `null` і не порожній | `порожній ідентифікатор посилки` |
+| `weightKg` | скінченне число, більше нуля | `вага має бути додатною`, `вага завелика`, `вага не є числом` |
+| `city` | не `null` і не порожнє | `порожнє місто` |
+| `deliveryDays` | не менше нуля | `від'ємний термін доставлення` |
+| `express` | значення типу `boolean` | у CSV дозволено лише `true` або `false` |
+
+Фабрика `Parcel.fromCsv(line)` перевіряє структуру рядка й формат чисел, а об'єкт створює
+лише через конструктор. Кожне правило записане в одному місці. Номер рядка додає цикл
+читання в `DeliveryController`, а унікальність `id` перевіряється там само, бо це правило
+всього файла, а не однієї посилки.
+
+Record [`WeightDelivery`](src/main/java/ua/lpnu/kzp/delivery/WeightDelivery.java) зберігає
+проміжний підсумок: кількість посилок, сумарну вагу й найбільший термін. Метод `plus(Parcel)`
+повертає новий підсумок і не змінює попередній.
+
+Відмінності від ЛР № 1:
+
+| Частина | ЛР № 1 | ЛР № 2 |
+|---|---|---|
+| Запис | `String[]` з індексами полів | об'єкт `Parcel` |
+| Перевірка | `ParcelParser` | конструктор і фабрика `Parcel.fromCsv` |
+| Набір даних | показники накопичуються під час читання | `List<Parcel>` |
+| Підсумок | окремі змінні | record `WeightDelivery` |
+| CSV, показники, текст звіту | – | без змін |
+
 ## Збірка
 
 Потрібен JDK 21. Maven установлювати не треба: Maven Wrapper сам завантажить версію,
@@ -51,10 +90,10 @@ mvnw.cmd clean verify        # Windows
 ## Запуск
 
 ```text
-java -jar target/lab01-1.0.0.jar
-java -jar target/lab01-1.0.0.jar --input data/input.csv --output out/report.txt
-java -jar target/lab01-1.0.0.jar --help
-java -jar target/lab01-1.0.0.jar --version
+java -jar target/lab01-1.1.0.jar
+java -jar target/lab01-1.1.0.jar --input data/input.csv --output out/report.txt
+java -jar target/lab01-1.1.0.jar --help
+java -jar target/lab01-1.1.0.jar --version
 ```
 
 | Аргумент | Призначення | За замовчуванням |
@@ -73,7 +112,7 @@ java -jar target/lab01-1.0.0.jar --version
 ## Приклад
 
 ```text
-$ java -jar target/lab01-1.0.0.jar
+$ java -jar target/lab01-1.1.0.jar
 Звіт: доставлення посилок
 Вхідний файл: data/input.csv
 
@@ -98,20 +137,20 @@ $ java -jar target/lab01-1.0.0.jar
 ```text
 src/main/java/ua/lpnu/kzp/
 ├── Main.java                 точка входу: парсер аргументів → контролер → код завершення
-├── DeliveryController.java   керує обробкою: файл → перевірка → показники → звіт
+├── DeliveryController.java   керує обробкою: файл → List<Parcel> → показники → звіт
 ├── ExitCode.java             коди завершення
 ├── BuildInfo.java            версія з pom.xml і номер збірки
 ├── cli/                      Arguments, ArgumentsParser, UsageException
-├── delivery/                 ParcelParser, InvalidRecordException, DeliverySummary
+├── delivery/                 Parcel, WeightDelivery, DeliverySummary
 └── report/                   ReportFormatter, FileReport
 ```
 
 ## Версія
 
 Версію продукту записано лише в `pom.xml`. Під час збірки Maven підставляє її у
-`version.properties`, а `--version` додає номер збірки: `1.0.0+local` для локальної
-збірки і `1.0.0+<N>` у CI, де `N` – номер запуску GitHub Actions. Стан лабораторної
-роботи № 1 позначено Git-тегом `v1.0.0`.
+`version.properties`, а `--version` додає номер збірки: `1.1.0+local` для локальної
+збірки і `1.1.0+<N>` у CI, де `N` – номер запуску GitHub Actions. Стан лабораторної
+роботи № 1 позначено Git-тегом `v1.0.0`, лабораторної роботи № 2 – тегом `v1.1.0`.
 
 ## CI
 

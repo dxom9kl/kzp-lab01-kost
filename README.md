@@ -2,14 +2,15 @@
 
 [![CI](https://github.com/dxom9kl/kzp-lab01-kost/actions/workflows/ci.yml/badge.svg)](https://github.com/dxom9kl/kzp-lab01-kost/actions/workflows/ci.yml)
 
-Лабораторні роботи № 1 і № 2 з курсу «Кросплатформні засоби програмування», варіант 15.
+Лабораторні роботи № 1–3 з курсу «Кросплатформні засоби програмування», варіант 15.
 
 Програма читає записи про доставлення посилок із CSV-файла, перевіряє кожен рядок,
 обчислює чотири показники й записує однаковий звіт у консоль і текстовий файл.
 Хибні рядки не зупиняють роботу: у звіті вказано номер рядка та причину пропуску.
 
-Поточний стан відповідає ЛР № 2: записи подано об'єктами `Parcel`, а зовнішня поведінка
-лишилася такою, як у ЛР № 1. Звіти: [ЛР № 2](REPORT.md), [ЛР № 1](reports/lab01.md).
+Поточний стан відповідає ЛР № 3: посилки подано ієрархією типів, а зовнішня поведінка лишилася
+такою, як у попередніх роботах. Звіти: [ЛР № 3](REPORT.md), [ЛР № 2](reports/lab02.md),
+[ЛР № 1](reports/lab01.md).
 
 ## Формат входу
 
@@ -41,12 +42,28 @@ id;weightKg;city;deliveryDays;express
 
 ## Модель даних
 
-Кожен коректний рядок стає незмінним об'єктом
-[`Parcel`](src/main/java/ua/lpnu/kzp/delivery/Parcel.java). Його поля `private final`, сеттерів
-немає, а значення читаються методами `getId()`, `getWeightKg()`, `getCity()`,
-`getDeliveryDays()` і `isExpress()`.
+Кожен коректний рядок стає незмінним об'єктом одного з підтипів абстрактного класу
+[`Parcel`](src/main/java/ua/lpnu/kzp/delivery/Parcel.java). Підтип обирає фабрика
+`Parcel.fromCsv(line)` за полем `express`, а решта програми працює зі спільним типом.
 
-Конструктор перевіряє інваріанти, тому хибний об'єкт неможливо створити:
+```text
+                Parcel (abstract)
+     id, weightKg, city, deliveryDays
+     getKind(), calculatedDays(), calculatedCost()
+                 ▲               ▲
+     RegularParcel               ExpressParcel
+     reserveDays                 acceleratedDays
+```
+
+| Підтип | `DeliveryKind` | Розрахунковий термін | Вартість |
+|---|---|---|---|
+| `RegularParcel` | `REGULAR` | плановий термін + резерв днів | базовий тариф |
+| `ExpressParcel` | `EXPRESS` | плановий термін − дні прискорення | базовий тариф × 1.5 + 25 грн за день прискорення |
+
+Базовий тариф становить 40 грн + 10 грн за кілограм. Усі тарифи демонстраційні. Вхідний файл не містить
+резерву чи прискорення, тому в посилок із файла ці поля нульові, а розрахунковий термін дорівнює плановому.
+
+Базовий тип перевіряє спільні інваріанти, тому хибний об'єкт неможливо створити:
 
 | Поле | Інваріант | Причина відхилення |
 |---|---|---|
@@ -54,25 +71,30 @@ id;weightKg;city;deliveryDays;express
 | `weightKg` | скінченне число, більше нуля | `вага має бути додатною`, `вага завелика`, `вага не є числом` |
 | `city` | не `null` і не порожнє | `порожнє місто` |
 | `deliveryDays` | не менше нуля | `від'ємний термін доставлення` |
-| `express` | значення типу `boolean` | у CSV дозволено лише `true` або `false` |
+| `reserveDays` (`RegularParcel`) | не менше нуля, сума з терміном вміщується в `int` | `від'ємний резерв днів`, `резерв днів завеликий` |
+| `acceleratedDays` (`ExpressParcel`) | від нуля до планового терміну | `від'ємне прискорення доставлення`, `прискорення … перевищує плановий термін` |
 
-Фабрика `Parcel.fromCsv(line)` перевіряє структуру рядка й формат чисел, а об'єкт створює
-лише через конструктор. Кожне правило записане в одному місці. Номер рядка додає цикл
-читання в `DeliveryController`, а унікальність `id` перевіряється там само, бо це правило
-всього файла, а не однієї посилки.
+Посилки рівні, якщо мають однаковий підтип, однакові спільні поля й однакове власне поле підтипу.
+`equals` і `hashCode` узгоджені, тому посилки можна зберігати в `HashSet` і використовувати як ключі `HashMap`.
+
+Спадкування обрано, бо звичайна й експрес-посилка є різновидами посилки та мають спільний стан і правила.
+Абстрактний клас, на відміну від інтерфейсу, зберігає ці поля в одному місці. `DeliverySummary` лише
+використовує посилки, тому він пов'язаний із ними композицією.
 
 Record [`WeightDelivery`](src/main/java/ua/lpnu/kzp/delivery/WeightDelivery.java) зберігає
 проміжний підсумок: кількість посилок, сумарну вагу й найбільший термін. Метод `plus(Parcel)`
 повертає новий підсумок і не змінює попередній.
 
-Відмінності від ЛР № 1:
+Відмінності від ЛР № 2:
 
-| Частина | ЛР № 1 | ЛР № 2 |
+| Частина | ЛР № 2 | ЛР № 3 |
 |---|---|---|
-| Запис | `String[]` з індексами полів | об'єкт `Parcel` |
-| Перевірка | `ParcelParser` | конструктор і фабрика `Parcel.fromCsv` |
-| Набір даних | показники накопичуються під час читання | `List<Parcel>` |
-| Підсумок | окремі змінні | record `WeightDelivery` |
+| Запис | один клас `Parcel` | абстрактний `Parcel` і два підтипи |
+| Вид доставлення | поле `boolean express` | enum `DeliveryKind` |
+| Кількість експрес-доставлень | умова `if (parcel.isExpress())` | підрахунок за `parcel.getKind()` |
+| Термін у показниках | поле `deliveryDays` | поліморфний метод `calculatedDays()` |
+| Вартість | немає | поліморфний метод `calculatedCost()` |
+| Рівність об'єктів | за посиланням | `equals` і `hashCode` за значеннями |
 | CSV, показники, текст звіту | – | без змін |
 
 ## Збірка
@@ -90,10 +112,10 @@ mvnw.cmd clean verify        # Windows
 ## Запуск
 
 ```text
-java -jar target/lab01-1.1.0.jar
-java -jar target/lab01-1.1.0.jar --input data/input.csv --output out/report.txt
-java -jar target/lab01-1.1.0.jar --help
-java -jar target/lab01-1.1.0.jar --version
+java -jar target/lab01-1.2.0.jar
+java -jar target/lab01-1.2.0.jar --input data/input.csv --output out/report.txt
+java -jar target/lab01-1.2.0.jar --help
+java -jar target/lab01-1.2.0.jar --version
 ```
 
 | Аргумент | Призначення | За замовчуванням |
@@ -112,7 +134,7 @@ java -jar target/lab01-1.1.0.jar --version
 ## Приклад
 
 ```text
-$ java -jar target/lab01-1.1.0.jar
+$ java -jar target/lab01-1.2.0.jar
 Звіт: доставлення посилок
 Вхідний файл: data/input.csv
 
@@ -141,16 +163,17 @@ src/main/java/ua/lpnu/kzp/
 ├── ExitCode.java             коди завершення
 ├── BuildInfo.java            версія з pom.xml і номер збірки
 ├── cli/                      Arguments, ArgumentsParser, UsageException
-├── delivery/                 Parcel, WeightDelivery, DeliverySummary
+├── delivery/                 Parcel, RegularParcel, ExpressParcel, DeliveryKind,
+│                             WeightDelivery, DeliverySummary
 └── report/                   ReportFormatter, FileReport
 ```
 
 ## Версія
 
 Версію продукту записано лише в `pom.xml`. Під час збірки Maven підставляє її у
-`version.properties`, а `--version` додає номер збірки: `1.1.0+local` для локальної
-збірки і `1.1.0+<N>` у CI, де `N` – номер запуску GitHub Actions. Стан лабораторної
-роботи № 1 позначено Git-тегом `v1.0.0`, лабораторної роботи № 2 – тегом `v1.1.0`.
+`version.properties`, а `--version` додає номер збірки: `1.2.0+local` для локальної
+збірки і `1.2.0+<N>` у CI, де `N` – номер запуску GitHub Actions. Стан лабораторних робіт
+позначено Git-тегами: № 1 – `v1.0.0`, № 2 – `v1.1.0`, № 3 – `v1.2.0`.
 
 ## CI
 

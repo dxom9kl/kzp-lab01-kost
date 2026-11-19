@@ -16,7 +16,7 @@ class WeightDeliveryTest {
     private static final double DELTA = 0.0001;
 
     private static Parcel parcel(double weightKg, int deliveryDays) {
-        return new Parcel("UA-1", weightKg, "Київ", deliveryDays, false);
+        return new RegularParcel("UA-1", weightKg, "Київ", deliveryDays);
     }
 
     /* Методи доступу повертають значення компонентів. */
@@ -72,6 +72,16 @@ class WeightDeliveryTest {
     @Test
     void plusRaisesMaxDeliveryDays() {
         assertEquals(7, WeightDelivery.EMPTY.plus(parcel(1.0, 2)).plus(parcel(1.0, 7)).maxDeliveryDays());
+    }
+
+    /* Найбільший термін береться з розрахункового терміну фактичного підтипу. */
+    @Test
+    void plusUsesCalculatedDaysOfSubtype() {
+        WeightDelivery totals = WeightDelivery.EMPTY
+                .plus(new RegularParcel("UA-1", 1.0, "Київ", 2, 3))
+                .plus(new ExpressParcel("UA-2", 1.0, "Львів", 6, 4));
+
+        assertEquals(5, totals.maxDeliveryDays());
     }
 
     /* Середнє обчислюється в double і не втрачає дробової частини. */

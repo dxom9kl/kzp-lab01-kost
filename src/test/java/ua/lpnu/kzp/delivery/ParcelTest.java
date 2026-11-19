@@ -18,11 +18,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 class ParcelTest {
     private static final double DELTA = 0.0001;
 
+    /* Parcel став абстрактним, тому об'єкт створює підтип, який відповідає ознаці express. */
+    private static Parcel parcel(String id, double weightKg, String city, int deliveryDays, boolean express) {
+        return express
+                ? new ExpressParcel(id, weightKg, city, deliveryDays)
+                : new RegularParcel(id, weightKg, city, deliveryDays);
+    }
+
     /* Коректний конструктор зберігає всі поля. */
     @Test
     void constructorKeepsAllFields() {
         // Arrange і Act
-        Parcel parcel = new Parcel("UA-1001", 2.5, "Львів", 1, true);
+        Parcel parcel = parcel("UA-1001", 2.5, "Львів", 1, true);
 
         // Assert
         assertEquals("UA-1001", parcel.getId());
@@ -35,8 +42,8 @@ class ParcelTest {
     /* Найменші й найбільші допустимі значення не відхиляються; нуль днів – доставлення в той самий день. */
     @Test
     void constructorAcceptsBoundaryValues() {
-        Parcel lightest = new Parcel("1", Double.MIN_VALUE, "Л", 0, false);
-        Parcel heaviest = new Parcel("UA-2", Double.MAX_VALUE, "Київ", Integer.MAX_VALUE, false);
+        Parcel lightest = parcel("1", Double.MIN_VALUE, "Л", 0, false);
+        Parcel heaviest = parcel("UA-2", Double.MAX_VALUE, "Київ", Integer.MAX_VALUE, false);
 
         assertEquals(Double.MIN_VALUE, lightest.getWeightKg());
         assertEquals(0, lightest.getDeliveryDays());
@@ -50,7 +57,7 @@ class ParcelTest {
     void constructorRejectsNullId() {
         // Act
         NullPointerException exception = assertThrows(NullPointerException.class,
-                () -> new Parcel(null, 1.0, "Київ", 1, false));
+                () -> parcel(null, 1.0, "Київ", 1, false));
 
         // Assert
         assertEquals("ідентифікатор посилки не може бути null", exception.getMessage());
@@ -60,7 +67,7 @@ class ParcelTest {
     @Test
     void constructorRejectsNullCity() {
         NullPointerException exception = assertThrows(NullPointerException.class,
-                () -> new Parcel("UA-1", 1.0, null, 1, false));
+                () -> parcel("UA-1", 1.0, null, 1, false));
 
         assertEquals("місто не може бути null", exception.getMessage());
     }
@@ -70,7 +77,7 @@ class ParcelTest {
     @ValueSource(strings = {"", " ", "   ", "\t"})
     void constructorRejectsBlankId(String id) {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> new Parcel(id, 1.0, "Київ", 1, false));
+                () -> parcel(id, 1.0, "Київ", 1, false));
 
         assertEquals("порожній ідентифікатор посилки", exception.getMessage());
     }
@@ -80,7 +87,7 @@ class ParcelTest {
     @ValueSource(strings = {"", " ", "   ", "\t"})
     void constructorRejectsBlankCity(String city) {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> new Parcel("UA-1", 1.0, city, 1, false));
+                () -> parcel("UA-1", 1.0, city, 1, false));
 
         assertEquals("порожнє місто", exception.getMessage());
     }
@@ -90,7 +97,7 @@ class ParcelTest {
     @MethodSource("invalidWeights")
     void constructorRejectsInvalidWeight(double weightKg, String reason) {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> new Parcel("UA-1", weightKg, "Київ", 1, false));
+                () -> parcel("UA-1", weightKg, "Київ", 1, false));
 
         assertEquals(reason, exception.getMessage());
     }
@@ -110,7 +117,7 @@ class ParcelTest {
     @ValueSource(ints = {-1, -30, Integer.MIN_VALUE})
     void constructorRejectsNegativeDeliveryDays(int deliveryDays) {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> new Parcel("UA-1", 1.0, "Київ", deliveryDays, false));
+                () -> parcel("UA-1", 1.0, "Київ", deliveryDays, false));
 
         assertEquals("від'ємний термін доставлення: %d".formatted(deliveryDays), exception.getMessage());
     }
@@ -119,9 +126,9 @@ class ParcelTest {
     @Test
     void toStringDescribesParcel() {
         assertEquals("UA-1001: 2.50 кг, Львів, 1 дн., експрес",
-                new Parcel("UA-1001", 2.5, "Львів", 1, true).toString());
+                parcel("UA-1001", 2.5, "Львів", 1, true).toString());
         assertEquals("UA-1002: 0.75 кг, Кам'янець-Подільський, 0 дн., звичайне",
-                new Parcel("UA-1002", 0.75, "Кам'янець-Подільський", 0, false).toString());
+                parcel("UA-1002", 0.75, "Кам'янець-Подільський", 0, false).toString());
     }
 
     /* Десятковий роздільник у toString не залежить від локалі за замовчуванням. */
@@ -131,7 +138,7 @@ class ParcelTest {
         try {
             Locale.setDefault(Locale.forLanguageTag("uk-UA"));
 
-            String text = new Parcel("UA-1", 2.5, "Львів", 1, true).toString();
+            String text = parcel("UA-1", 2.5, "Львів", 1, true).toString();
 
             assertTrue(text.contains("2.50 кг"), text);
         } finally {
@@ -149,7 +156,7 @@ class ParcelTest {
             IllegalArgumentException fields =
                     assertThrows(IllegalArgumentException.class, () -> Parcel.fromCsv("UA-1;1.00;Київ;2"));
             IllegalArgumentException days = assertThrows(IllegalArgumentException.class,
-                    () -> new Parcel("UA-1", 1.0, "Київ", -1, false));
+                    () -> parcel("UA-1", 1.0, "Київ", -1, false));
 
             assertEquals("очікується 5 полів, отримано 4", fields.getMessage());
             assertEquals("від'ємний термін доставлення: -1", days.getMessage());

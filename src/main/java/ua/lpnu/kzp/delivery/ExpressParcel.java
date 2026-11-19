@@ -1,6 +1,7 @@
 package ua.lpnu.kzp.delivery;
 
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Експрес-посилка: прискорення скорочує розрахунковий термін, а вартість містить надбавку.
@@ -87,5 +88,27 @@ public final class ExpressParcel extends Parcel {
     @Override
     public double calculatedCost() {
         return baseCost() * EXPRESS_RATE + acceleratedDays * ACCELERATION_FEE;
+    }
+
+    /**
+     * Порівнює експрес-посилки за спільними полями й прискоренням.
+     *
+     * @param other об'єкт для порівняння
+     * @return {@code true}, якщо посилки логічно рівні
+     */
+    @Override
+    public boolean equals(Object other) {
+        return super.equals(other) && other instanceof ExpressParcel parcel
+                && acceleratedDays == parcel.acceleratedDays;
+    }
+
+    /**
+     * Повертає хеш-код, узгоджений із {@link #equals(Object)}.
+     *
+     * @return хеш-код посилки
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), acceleratedDays);
     }
 }

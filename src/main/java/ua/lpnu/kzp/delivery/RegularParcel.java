@@ -1,6 +1,7 @@
 package ua.lpnu.kzp.delivery;
 
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Звичайна посилка: розрахунковий термін містить резерв днів, а вартість дорівнює базовому тарифу.
@@ -82,5 +83,26 @@ public final class RegularParcel extends Parcel {
     @Override
     public double calculatedCost() {
         return baseCost();
+    }
+
+    /**
+     * Порівнює звичайні посилки за спільними полями й резервом днів.
+     *
+     * @param other об'єкт для порівняння
+     * @return {@code true}, якщо посилки логічно рівні
+     */
+    @Override
+    public boolean equals(Object other) {
+        return super.equals(other) && other instanceof RegularParcel parcel && reserveDays == parcel.reserveDays;
+    }
+
+    /**
+     * Повертає хеш-код, узгоджений із {@link #equals(Object)}.
+     *
+     * @return хеш-код посилки
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), reserveDays);
     }
 }

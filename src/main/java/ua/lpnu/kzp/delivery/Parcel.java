@@ -177,6 +177,38 @@ public abstract class Parcel {
     }
 
     /**
+     * Порівнює посилки за фактичним підтипом і спільними полями.
+     *
+     * @param other об'єкт для порівняння
+     * @return {@code true}, якщо об'єкти одного підтипу мають однакові значення спільних полів
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        // getClass не допускає рівності різних підтипів з однаковими спільними полями.
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        Parcel parcel = (Parcel) other;
+        return id.equals(parcel.id)
+                && Double.compare(weightKg, parcel.weightKg) == 0
+                && city.equals(parcel.city)
+                && deliveryDays == parcel.deliveryDays;
+    }
+
+    /**
+     * Повертає хеш-код, узгоджений із {@link #equals(Object)}.
+     *
+     * @return хеш-код посилки
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(getClass(), id, weightKg, city, deliveryDays);
+    }
+
+    /**
      * Повертає читабельне подання посилки; це не формат вхідного файла.
      *
      * @return рядок вигляду {@code UA-1001: 2.50 кг, Львів, 1 дн., експрес}

@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -59,6 +60,22 @@ class DeliveryControllerTest {
         // Assert
         assertEquals(4, expected.size());
         assertEquals(expected, metrics(report()));
+    }
+
+    /* Номер рядка в причині пропуску записується цифрами 0–9 за будь-якої локалі за замовчуванням. */
+    @Test
+    void duplicateReasonUsesAsciiDigitsRegardlessOfDefaultLocale() throws IOException {
+        Locale saved = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-SA-u-nu-arab"));
+
+            process("UA-1;2.00;Київ;1;true", "UA-1;2.00;Київ;1;true");
+
+            assertTrue(report().contains("Рядок 2: повторний ідентифікатор посилки UA-1 (уперше в рядку 1)"),
+                    report());
+        } finally {
+            Locale.setDefault(saved);
+        }
     }
 
     /* Хибний рядок не зупиняє обробку, а потрапляє у звіт із номером і причиною. */

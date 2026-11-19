@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import java.util.Locale;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -87,6 +88,25 @@ class WeightDeliveryTest {
                 .plus(parcel(Double.MAX_VALUE, 1));
 
         assertEquals(Double.POSITIVE_INFINITY, totals.totalWeightKg());
+    }
+
+    /* Числа в причинах відхилення записуються цифрами 0–9 за будь-якої локалі за замовчуванням. */
+    @Test
+    void messagesUseAsciiDigitsRegardlessOfDefaultLocale() {
+        Locale saved = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-SA-u-nu-arab"));
+
+            IllegalArgumentException count = assertThrows(IllegalArgumentException.class,
+                    () -> new WeightDelivery(-1, 1.0, 1));
+            IllegalArgumentException days = assertThrows(IllegalArgumentException.class,
+                    () -> new WeightDelivery(1, 1.0, -1));
+
+            assertEquals("кількість посилок не може бути від'ємною: -1", count.getMessage());
+            assertEquals("найбільший термін не може бути від'ємним: -1", days.getMessage());
+        } finally {
+            Locale.setDefault(saved);
+        }
     }
 
     /* Від'ємні значення та NaN не є допустимим підсумком. */

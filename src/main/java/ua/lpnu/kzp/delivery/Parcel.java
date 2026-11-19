@@ -81,8 +81,8 @@ public final class Parcel {
         // Другий аргумент -1 зберігає порожні поля наприкінці рядка.
         String[] fields = line.split(SEPARATOR, -1);
         if (fields.length != FIELD_COUNT) {
-            throw new IllegalArgumentException(
-                    "очікується %d полів, отримано %d".formatted(FIELD_COUNT, fields.length));
+            throw new IllegalArgumentException(String.format(Locale.ROOT,
+                    "очікується %d полів, отримано %d", FIELD_COUNT, fields.length));
         }
         requireText(fields[ID], EMPTY_ID);
         requireText(fields[WEIGHT_KG], "порожня вага");
@@ -179,7 +179,8 @@ public final class Parcel {
     private static void checkDeliveryDays(int deliveryDays) {
         // Нуль днів допустимий: це доставлення в день відправлення.
         if (deliveryDays < 0) {
-            throw new IllegalArgumentException("від'ємний термін доставлення: %d".formatted(deliveryDays));
+            throw new IllegalArgumentException(
+                    String.format(Locale.ROOT, "від'ємний термін доставлення: %d", deliveryDays));
         }
     }
 

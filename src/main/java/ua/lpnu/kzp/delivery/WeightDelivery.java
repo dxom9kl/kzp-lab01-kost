@@ -1,5 +1,7 @@
 package ua.lpnu.kzp.delivery;
 
+import java.util.Locale;
+
 /**
  * Незмінний проміжний підсумок за посилками: кількість, сумарна вага й найбільший термін.
  *
@@ -20,7 +22,8 @@ public record WeightDelivery(int count, double totalWeightKg, int maxDeliveryDay
      */
     public WeightDelivery {
         if (count < 0) {
-            throw new IllegalArgumentException("кількість посилок не може бути від'ємною: %d".formatted(count));
+            throw new IllegalArgumentException(
+                    String.format(Locale.ROOT, "кількість посилок не може бути від'ємною: %d", count));
         }
         // Сума дуже великих скінченних ваг може дати +Infinity: звіт показує її, а не зупиняє програму.
         if (Double.isNaN(totalWeightKg) || totalWeightKg < 0) {
@@ -29,7 +32,7 @@ public record WeightDelivery(int count, double totalWeightKg, int maxDeliveryDay
         }
         if (maxDeliveryDays < 0) {
             throw new IllegalArgumentException(
-                    "найбільший термін не може бути від'ємним: %d".formatted(maxDeliveryDays));
+                    String.format(Locale.ROOT, "найбільший термін не може бути від'ємним: %d", maxDeliveryDays));
         }
     }
 

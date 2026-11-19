@@ -90,8 +90,8 @@ public final class DeliveryController {
             // Ідентифікатор посилки унікальний: повторний запис спотворив би всі показники.
             Integer firstLine = firstLineById.putIfAbsent(parcel.getId(), lineNumber);
             if (firstLine != null) {
-                errors.add(skipped(lineNumber, "повторний ідентифікатор посилки %s (уперше в рядку %d)"
-                        .formatted(parcel.getId(), firstLine)));
+                errors.add(skipped(lineNumber, String.format(Locale.ROOT,
+                        "повторний ідентифікатор посилки %s (уперше в рядку %d)", parcel.getId(), firstLine)));
                 continue;
             }
             parcels.add(parcel);

@@ -139,6 +139,25 @@ class ParcelTest {
         }
     }
 
+    /* Числа в причинах відхилення записуються цифрами 0–9 за будь-якої локалі за замовчуванням. */
+    @Test
+    void messagesUseAsciiDigitsRegardlessOfDefaultLocale() {
+        Locale saved = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-SA-u-nu-arab"));
+
+            IllegalArgumentException fields =
+                    assertThrows(IllegalArgumentException.class, () -> Parcel.fromCsv("UA-1;1.00;Київ;2"));
+            IllegalArgumentException days = assertThrows(IllegalArgumentException.class,
+                    () -> new Parcel("UA-1", 1.0, "Київ", -1, false));
+
+            assertEquals("очікується 5 полів, отримано 4", fields.getMessage());
+            assertEquals("від'ємний термін доставлення: -1", days.getMessage());
+        } finally {
+            Locale.setDefault(saved);
+        }
+    }
+
     /* Відсутній рядок – помилка програміста, а не хибний запис файла. */
     @Test
     void fromCsvRejectsNullLine() {

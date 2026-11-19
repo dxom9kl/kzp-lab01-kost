@@ -62,6 +62,15 @@ class DeliveryControllerTest {
         assertEquals(expected, metrics(report()));
     }
 
+    /* Кожен наступний повтор називає рядок першої появи, а не попередній повтор. */
+    @Test
+    void repeatedDuplicateNamesFirstLine() throws IOException {
+        process("UA-1;2.00;Київ;1;true", "UA-1;2.00;Київ;1;true", "UA-1;2.00;Київ;1;true");
+
+        assertTrue(report().contains("Рядок 3: повторний ідентифікатор посилки UA-1 (уперше в рядку 1)"),
+                report());
+    }
+
     /* Номер рядка в причині пропуску записується цифрами 0–9 за будь-якої локалі за замовчуванням. */
     @Test
     void duplicateReasonUsesAsciiDigitsRegardlessOfDefaultLocale() throws IOException {

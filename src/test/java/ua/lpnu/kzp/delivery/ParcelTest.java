@@ -197,6 +197,10 @@ class ParcelTest {
 
     static Stream<Arguments> linesWithSeveralProblems() {
         return Stream.of(
+                arguments(";;Київ;2;false", "порожній ідентифікатор посилки"),
+                arguments("UA-1;;;2;false", "порожня вага"),
+                arguments("UA-1;1.00;;;false", "порожнє місто"),
+                arguments("UA-1;1.00;Київ;;", "порожній термін доставлення"),
                 arguments(";важка;Київ;два;так", "порожній ідентифікатор посилки"),
                 arguments("UA-1;важка;;два;так", "порожнє місто"),
                 arguments("UA-1;важка;Київ;;так", "порожній термін доставлення"),
@@ -205,6 +209,24 @@ class ParcelTest {
                 arguments("UA-1;0;Київ;два;так", "вага має бути додатною: 0"),
                 arguments("UA-1;1.00;Київ;два;так", "термін доставлення не є цілим числом: \"два\""),
                 arguments("UA-1;1.00;Київ;-1;так", "від'ємний термін доставлення: -1"));
+    }
+
+    /* Число має цифри по обидва боки крапки, а цифрами вважаються лише 0–9. */
+    @ParameterizedTest(name = "[{index}] {1}")
+    @MethodSource("unsupportedNumberFormats")
+    void fromCsvRejectsUnsupportedNumberFormat(String line, String reason) {
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> Parcel.fromCsv(line));
+
+        assertEquals(reason, exception.getMessage());
+    }
+
+    static Stream<Arguments> unsupportedNumberFormats() {
+        return Stream.of(
+                arguments("UA-1;5.;Київ;2;false", "вага не є числом: \"5.\""),
+                arguments("UA-1;.5;Київ;2;false", "вага не є числом: \".5\""),
+                arguments("UA-1;٣;Київ;2;false", "вага не є числом: \"٣\""),
+                arguments("UA-1;1.00;Київ;٣;false", "термін доставлення не є цілим числом: \"٣\""));
     }
 
     /* Переповнення int зберігає первинний виняток як причину. */

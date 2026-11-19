@@ -13,13 +13,15 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class ParcelFromCsvTest {
+    private static final double DELTA = 0.0001;
+
     /* Коректний рядок перетворюється на посилку з полями в порядку формату. */
     @Test
     void parsesValidLine() {
         Parcel parcel = Parcel.fromCsv("UA-1001;2.50;Львів;1;true");
 
         assertEquals("UA-1001", parcel.getId());
-        assertEquals(2.50, parcel.getWeightKg());
+        assertEquals(2.50, parcel.getWeightKg(), DELTA);
         assertEquals("Львів", parcel.getCity());
         assertEquals(1, parcel.getDeliveryDays());
         assertTrue(parcel.isExpress());
@@ -44,7 +46,8 @@ class ParcelFromCsvTest {
     @ParameterizedTest
     @ValueSource(strings = {"2", "2.5", "0.75", "12.40"})
     void acceptsDecimalWeight(String weightKg) {
-        assertEquals(Double.parseDouble(weightKg), Parcel.fromCsv("UA-1;" + weightKg + ";Київ;2;false").getWeightKg());
+        assertEquals(Double.parseDouble(weightKg),
+                Parcel.fromCsv("UA-1;" + weightKg + ";Київ;2;false").getWeightKg(), DELTA);
     }
 
     /* Ознака експрес-доставлення приймає рівно два значення. */

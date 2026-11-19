@@ -99,9 +99,13 @@ class DeliverySummaryTest {
         assertEquals(2, summary.expressCount());
     }
 
-    /* Порожній список дає порожні показники. */
+    /* Порожній список дає порожні показники й не називає посилку з найбільшим терміном. */
     @Test
     void emptyListGivesEmptySummary() {
-        assertTrue(DeliverySummary.of(List.of()).isEmpty());
+        DeliverySummary summary = DeliverySummary.of(List.of());
+
+        assertTrue(summary.isEmpty());
+        assertEquals("", summary.longestDeliveryId());
+        assertEquals("", summary.longestDeliveryCity());
     }
 }

@@ -65,8 +65,9 @@ public final class Parcel {
     /**
      * Створює посилку з рядка вхідного файла.
      *
-     * <p>Формат рядка: {@code id;weightKg;city;deliveryDays;express}. Перевірки виконуються
-     * в порядку полів, тож повідомлення винятку називає першу знайдену проблему.
+     * <p>Формат рядка: {@code id;weightKg;city;deliveryDays;express}. Спершу перевіряється
+     * наявність усіх полів, потім їхні значення в порядку формату, тож повідомлення винятку
+     * називає першу знайдену проблему.
      *
      * @param line рядок вхідного файла
      * @return посилка з полями рядка
@@ -84,6 +85,7 @@ public final class Parcel {
             throw new IllegalArgumentException(String.format(Locale.ROOT,
                     "очікується %d полів, отримано %d", FIELD_COUNT, fields.length));
         }
+        // Порядок перевірок збережено з ЛР № 1, щоб причина пропуску рядка не змінилася.
         requireText(fields[ID], EMPTY_ID);
         requireText(fields[WEIGHT_KG], "порожня вага");
         requireText(fields[CITY], EMPTY_CITY);

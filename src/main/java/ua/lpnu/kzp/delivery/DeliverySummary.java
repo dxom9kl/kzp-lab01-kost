@@ -36,7 +36,7 @@ public final class DeliverySummary {
      */
     public void add(Parcel parcel) {
         // Перший запис задає початковий максимум; за рівного терміну лишається перша посилка.
-        if (longestDelivery == null || parcel.getDeliveryDays() > longestDelivery.getDeliveryDays()) {
+        if (longestDelivery == null || parcel.getDeliveryDays() > totals.maxDeliveryDays()) {
             longestDelivery = parcel;
         }
         totals = totals.plus(parcel);

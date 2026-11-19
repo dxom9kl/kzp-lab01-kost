@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -59,7 +60,8 @@ class ExpressParcelTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> new ExpressParcel("UA-1", 1.0, "Київ", 3, acceleratedDays));
 
-        assertEquals("від'ємне прискорення доставлення: %d".formatted(acceleratedDays), exception.getMessage());
+        assertEquals(String.format(Locale.ROOT, "від'ємне прискорення доставлення: %d", acceleratedDays),
+                exception.getMessage());
     }
 
     /* Прискорення не може зробити розрахунковий термін від'ємним. */

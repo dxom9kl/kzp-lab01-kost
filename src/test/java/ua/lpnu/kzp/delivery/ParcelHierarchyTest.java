@@ -66,6 +66,16 @@ class ParcelHierarchyTest {
         assertThrows(IllegalArgumentException.class, () -> factory.create("UA-1", 1.0, "Київ", -1));
     }
 
+    /* Відсутнє значення повідомляється раніше за хибні значення інших полів. */
+    @ParameterizedTest(name = "[{index}] {0}")
+    @MethodSource("subtypes")
+    void nullIsReportedBeforeInvalidValues(String name, ParcelFactory factory) {
+        NullPointerException exception =
+                assertThrows(NullPointerException.class, () -> factory.create(" ", -1.0, null, -1));
+
+        assertEquals("місто не може бути null", exception.getMessage());
+    }
+
     /* Однаковий виклик через спільний тип дає різну вартість для різних підтипів. */
     @Test
     void subtypesCalculateCostDifferently() {

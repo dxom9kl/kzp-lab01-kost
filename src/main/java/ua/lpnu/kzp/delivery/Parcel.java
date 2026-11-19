@@ -50,8 +50,8 @@ public abstract class Parcel {
      * @throws IllegalArgumentException якщо значення порушує інваріант посилки
      */
     protected Parcel(String id, double weightKg, String city, int deliveryDays) {
-        // Значення перевіряються до створення об'єкта, тому некоректна посилка не з'являється навіть частково.
-        this(validId(id), validWeightKg(weightKg), validCity(city), validDeliveryDays(deliveryDays), true);
+        // Значення перевіряються до присвоєння полів, тому хибні дані не потрапляють у поля Parcel.
+        this(validId(id, city), validWeightKg(weightKg), validCity(city), validDeliveryDays(deliveryDays), true);
     }
 
     /* Присвоює вже перевірені значення; параметр validated лише відрізняє цей конструктор. */
@@ -220,8 +220,10 @@ public abstract class Parcel {
                 id, weightKg, city, deliveryDays, getKind().label());
     }
 
-    private static String validId(String id) {
+    /* Відсутні значення перевіряються першими, до всіх інших правил посилки. */
+    private static String validId(String id, String city) {
         Objects.requireNonNull(id, "ідентифікатор посилки не може бути null");
+        Objects.requireNonNull(city, "місто не може бути null");
         requireText(id, EMPTY_ID);
         return id;
     }
@@ -232,7 +234,6 @@ public abstract class Parcel {
     }
 
     private static String validCity(String city) {
-        Objects.requireNonNull(city, "місто не може бути null");
         requireText(city, EMPTY_CITY);
         return city;
     }

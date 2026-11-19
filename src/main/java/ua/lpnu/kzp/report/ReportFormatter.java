@@ -3,6 +3,7 @@ package ua.lpnu.kzp.report;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import ua.lpnu.kzp.delivery.DeliverySummary;
 
 /**
@@ -43,9 +44,9 @@ public final class ReportFormatter {
             report.append(row("Експрес-доставлень", Integer.toString(summary.expressCount())));
         }
         report.append(String.format(Locale.ROOT, "%nПропущено рядків: %d%n", errors.size()));
-        for (String error : errors) {
-            report.append(String.format(Locale.ROOT, "  %s%n", error));
-        }
+        report.append(errors.stream()
+                .map(error -> String.format(Locale.ROOT, "  %s%n", error))
+                .collect(Collectors.joining()));
         return report.toString();
     }
 

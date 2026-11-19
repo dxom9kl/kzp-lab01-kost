@@ -48,6 +48,17 @@ public record WeightDelivery(int count, double totalWeightKg, int maxDeliveryDay
     }
 
     /**
+     * Об'єднує два підсумки.
+     *
+     * @param other інший підсумок
+     * @return новий підсумок обох наборів посилок
+     */
+    public WeightDelivery merge(WeightDelivery other) {
+        return new WeightDelivery(count + other.count, totalWeightKg + other.totalWeightKg,
+                Math.max(maxDeliveryDays, other.maxDeliveryDays));
+    }
+
+    /**
      * Обчислює середню вагу посилки.
      *
      * @return середня вага в кілограмах або {@code 0.0}, якщо посилок немає

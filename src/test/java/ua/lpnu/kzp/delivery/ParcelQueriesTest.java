@@ -1,6 +1,7 @@
 package ua.lpnu.kzp.delivery;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,6 +10,7 @@ import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 
 class ParcelQueriesTest {
@@ -156,9 +158,94 @@ class ParcelQueriesTest {
         ParcelQueries.weightStatistics(input);
         ParcelQueries.topByWeight(input, ParcelQueries.TOP_SIZE);
         ParcelQueries.findById(input, "UA-11");
+        ParcelQueries.totals(input);
+        ParcelQueries.longestDelivery(input);
+        ParcelQueries.countByKind(input);
+        ParcelQueries.totalCost(input);
 
         // Assert
         assertEquals(PARCELS, input);
+    }
+
+    /* Підсумок збігається з послідовним додаванням посилок. */
+    @Test
+    void totalsMatchSequentialAddition() {
+        WeightDelivery expected = WeightDelivery.EMPTY;
+        for (Parcel parcel : PARCELS) {
+            expected = expected.plus(parcel);
+        }
+
+        assertEquals(expected, ParcelQueries.totals(PARCELS));
+        assertEquals(WeightDelivery.EMPTY, ParcelQueries.totals(List.of()));
+    }
+
+    /* Серед посилок з однаковим найбільшим терміном лишається перша. */
+    @Test
+    void longestDeliveryKeepsFirstOfEqualDays() {
+        List<Parcel> parcels = List.of(
+                new RegularParcel("UA-1", 1.0, "Київ", 4),
+                new ExpressParcel("UA-2", 1.0, "Львів", 6),
+                new RegularParcel("UA-3", 1.0, "Одеса", 6));
+
+        assertEquals("UA-2", ParcelQueries.longestDelivery(parcels).orElseThrow().getId());
+        assertEquals(Optional.empty(), ParcelQueries.longestDelivery(List.of()));
+    }
+
+    /* Кількість за видами визначають фактичні підтипи посилок. */
+    @Test
+    void countByKindCountsSubtypes() {
+        assertEquals(Map.of(DeliveryKind.REGULAR, 4L, DeliveryKind.EXPRESS, 3L), ParcelQueries.countByKind(PARCELS));
+    }
+
+    /* Загальна вартість складається з вартостей різних підтипів. */
+    @Test
+    void totalCostSumsSubtypeCosts() {
+        assertEquals(786.25, ParcelQueries.totalCost(PARCELS), DELTA);
+    }
+
+    /* Потокові запити дають ті самі результати, що й циклова реалізація. */
+    @Test
+    void streamQueriesMatchLoopReference() {
+        // Arrange: циклові еталони тих самих запитів.
+        List<Parcel> loopInTransit = new ArrayList<>();
+        List<String> loopCities = new ArrayList<>();
+        Map<String, Long> loopCounts = new TreeMap<>();
+        double loopSum = 0.0;
+        double loopMin = Double.POSITIVE_INFINITY;
+        double loopMax = Double.NEGATIVE_INFINITY;
+        Parcel loopFound = null;
+        for (Parcel parcel : PARCELS) {
+            if (parcel.calculatedDays() > DeliveryStatus.CONTROL_DAY) {
+                loopInTransit.add(parcel);
+            }
+            loopCities.add(parcel.getCity());
+            loopCounts.merge(parcel.getCity(), 1L, Long::sum);
+            loopSum += parcel.getWeightKg();
+            loopMin = Math.min(loopMin, parcel.getWeightKg());
+            loopMax = Math.max(loopMax, parcel.getWeightKg());
+            if (loopFound == null && "UA-11".equals(parcel.getId())) {
+                loopFound = parcel;
+            }
+        }
+        List<Parcel> loopTop = new ArrayList<>(PARCELS);
+        loopTop.sort((first, second) -> {
+            int byWeight = Double.compare(second.getWeightKg(), first.getWeightKg());
+            return byWeight != 0 ? byWeight : first.getId().compareTo(second.getId());
+        });
+
+        // Act
+        DoubleSummaryStatistics statistics = ParcelQueries.weightStatistics(PARCELS);
+
+        // Assert
+        assertEquals(loopInTransit, ParcelQueries.inTransit(PARCELS));
+        assertEquals(loopCities, ParcelQueries.cities(PARCELS));
+        assertEquals(loopCounts, ParcelQueries.countByCity(PARCELS));
+        assertEquals(loopSum, statistics.getSum(), DELTA);
+        assertEquals(loopMin, statistics.getMin(), DELTA);
+        assertEquals(loopMax, statistics.getMax(), DELTA);
+        assertEquals(loopTop.subList(0, ParcelQueries.TOP_SIZE),
+                ParcelQueries.topByWeight(PARCELS, ParcelQueries.TOP_SIZE));
+        assertSame(loopFound, ParcelQueries.findById(PARCELS, "UA-11").orElseThrow());
     }
 
     /* Відсутній список відхиляється з поясненням. */

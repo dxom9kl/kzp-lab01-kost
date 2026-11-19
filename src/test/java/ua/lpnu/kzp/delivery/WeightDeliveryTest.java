@@ -84,6 +84,14 @@ class WeightDeliveryTest {
         assertEquals(5, totals.maxDeliveryDays());
     }
 
+    /* Об'єднання додає кількість і вагу та залишає більший термін. */
+    @Test
+    void mergeCombinesTotals() {
+        WeightDelivery merged = new WeightDelivery(2, 5.0, 3).merge(new WeightDelivery(1, 1.5, 7));
+
+        assertEquals(new WeightDelivery(3, 6.5, 7), merged);
+    }
+
     /* Середнє обчислюється в double і не втрачає дробової частини. */
     @Test
     void averageWeightKeepsFraction() {

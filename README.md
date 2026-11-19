@@ -2,15 +2,15 @@
 
 [![CI](https://github.com/dxom9kl/kzp-lab01-kost/actions/workflows/ci.yml/badge.svg)](https://github.com/dxom9kl/kzp-lab01-kost/actions/workflows/ci.yml)
 
-Лабораторні роботи № 1–3 з курсу «Кросплатформні засоби програмування», варіант 15.
+Лабораторні роботи № 1–4 з курсу «Кросплатформні засоби програмування», варіант 15.
 
 Програма читає записи про доставлення посилок із CSV-файла, перевіряє кожен рядок,
 обчислює чотири показники й записує однаковий звіт у консоль і текстовий файл.
 Хибні рядки не зупиняють роботу: у звіті вказано номер рядка та причину пропуску.
 
-Поточний стан відповідає ЛР № 3: посилки подано ієрархією типів, а зовнішня поведінка лишилася
-такою, як у попередніх роботах. Звіти: [ЛР № 3](REPORT.md), [ЛР № 2](reports/lab02.md),
-[ЛР № 1](reports/lab01.md).
+Поточний стан відповідає ЛР № 4: колекцію посилок обробляють запити Stream API, а зовнішня поведінка
+лишилася такою, як у попередніх роботах. Звіти: [ЛР № 4](REPORT.md), [ЛР № 3](reports/lab03.md),
+[ЛР № 2](reports/lab02.md), [ЛР № 1](reports/lab01.md).
 
 ## Формат входу
 
@@ -85,16 +85,38 @@ Record [`WeightDelivery`](src/main/java/ua/lpnu/kzp/delivery/WeightDelivery.java
 проміжний підсумок: кількість посилок, сумарну вагу й найбільший термін. Метод `plus(Parcel)`
 повертає новий підсумок і не змінює попередній.
 
-Відмінності від ЛР № 2:
+## Потокові запити
 
-| Частина | ЛР № 2 | ЛР № 3 |
+Клас [`ParcelQueries`](src/main/java/ua/lpnu/kzp/delivery/ParcelQueries.java) містить запити варіанта.
+Кожен запит створює власний потік і не змінює вхідний список.
+
+| Запит | Метод | Операції | Результат |
+|---|---|---|---|
+| Посилки в дорозі | `inTransit` | `filter`, `toList` | `List<Parcel>` |
+| Міста | `cities` | `map`, `toList` | `List<String>` |
+| Кількість за містом | `countByCity` | `groupingBy`, `counting` | `Map<String, Long>` |
+| Статистика ваги | `weightStatistics` | `summarizingDouble` | `DoubleSummaryStatistics` |
+| Найважчі посилки | `topByWeight` | `sorted`, `limit`, `toList` | `List<Parcel>` |
+| Пошук за номером | `findById` | `filter`, `findFirst` | `Optional<Parcel>` |
+
+- **Статус.** Вхідний файл не містить статусу, тому enum `DeliveryStatus` визначає його за контрольним другим
+  днем: посилка з розрахунковим терміном понад 2 дні `у дорозі`, решта `доставлено`.
+- **Групування.** `TreeMap` упорядковує міста за кодами Unicode, тому порядок не залежить від вхідного файла.
+- **Top-5.** Вага впорядковується за спаданням, а однакову вагу розрізняє номер за зростанням. `sorted` виконується
+  до `limit`. `N = 0` дає порожній результат, завеликий `N` повертає всі посилки, а від'ємний відхиляється.
+- **Пошук.** За дубльованого номера повертається перший запис, а за відсутнього – `Optional.empty()`.
+- **Показники звіту.** `DeliverySummary` обчислює їх потоковими запитами. Середня вага лишається послідовною сумою
+  (`reduce`), бо `summarizingDouble` використовує компенсоване підсумовування й може округлити результат інакше.
+
+Відмінності від ЛР № 3:
+
+| Частина | ЛР № 3 | ЛР № 4 |
 |---|---|---|
-| Запис | один клас `Parcel` | абстрактний `Parcel` і два підтипи |
-| Вид доставлення | поле `boolean express` | enum `DeliveryKind` |
-| Кількість експрес-доставлень | умова `if (parcel.isExpress())` | підрахунок за `parcel.getKind()` |
-| Термін у показниках | поле `deliveryDays` | поліморфний метод `calculatedDays()` |
-| Вартість | немає | поліморфний метод `calculatedCost()` |
-| Рівність об'єктів | за посиланням | `equals` і `hashCode` за значеннями |
+| Показники | накопичення в полях `DeliverySummary` | потокові запити `ParcelQueries` |
+| Сума, кількість, найбільший термін | `totals.plus(parcel)` для кожної посилки | `reduce` з `WeightDelivery::plus` |
+| Посилка з найбільшим терміном | умова в методі `add` | `reduce` із вибором першої найбільшої |
+| Кількість за видами | `EnumMap.merge` у методі `add` | `groupingBy` з `EnumMap` |
+| Перелік пропущених рядків | цикл `for` | `map` і `Collectors.joining` |
 | CSV, показники, текст звіту | – | без змін |
 
 ## Збірка
@@ -112,10 +134,10 @@ mvnw.cmd clean verify        # Windows
 ## Запуск
 
 ```text
-java -jar target/lab01-1.2.0.jar
-java -jar target/lab01-1.2.0.jar --input data/input.csv --output out/report.txt
-java -jar target/lab01-1.2.0.jar --help
-java -jar target/lab01-1.2.0.jar --version
+java -jar target/lab01-1.3.0.jar
+java -jar target/lab01-1.3.0.jar --input data/input.csv --output out/report.txt
+java -jar target/lab01-1.3.0.jar --help
+java -jar target/lab01-1.3.0.jar --version
 ```
 
 | Аргумент | Призначення | За замовчуванням |
@@ -134,7 +156,7 @@ java -jar target/lab01-1.2.0.jar --version
 ## Приклад
 
 ```text
-$ java -jar target/lab01-1.2.0.jar
+$ java -jar target/lab01-1.3.0.jar
 Звіт: доставлення посилок
 Вхідний файл: data/input.csv
 
@@ -163,17 +185,17 @@ src/main/java/ua/lpnu/kzp/
 ├── ExitCode.java             коди завершення
 ├── BuildInfo.java            версія з pom.xml і номер збірки
 ├── cli/                      Arguments, ArgumentsParser, UsageException
-├── delivery/                 Parcel, RegularParcel, ExpressParcel, DeliveryKind,
-│                             WeightDelivery, DeliverySummary
+├── delivery/                 Parcel, RegularParcel, ExpressParcel, DeliveryKind, DeliveryStatus,
+│                             ParcelQueries, WeightDelivery, DeliverySummary
 └── report/                   ReportFormatter, FileReport
 ```
 
 ## Версія
 
 Версію продукту записано лише в `pom.xml`. Під час збірки Maven підставляє її у
-`version.properties`, а `--version` додає номер збірки: `1.2.0+local` для локальної
-збірки і `1.2.0+<N>` у CI, де `N` – номер запуску GitHub Actions. Стан лабораторних робіт
-позначено Git-тегами: № 1 – `v1.0.0`, № 2 – `v1.1.0`, № 3 – `v1.2.0`.
+`version.properties`, а `--version` додає номер збірки: `1.3.0+local` для локальної
+збірки і `1.3.0+<N>` у CI, де `N` – номер запуску GitHub Actions. Стан лабораторних робіт
+позначено Git-тегами: № 1 – `v1.0.0`, № 2 – `v1.1.0`, № 3 – `v1.2.0`, № 4 – `v1.3.0`.
 
 ## CI
 

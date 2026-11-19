@@ -8,8 +8,8 @@ import java.util.Objects;
  * Обчислює показники варіанта за коректними посилками: кількість записів, середню вагу,
  * найбільший термін доставлення, кількість експрес-доставлень і загальну вартість.
  *
- * <p>Клас зберігає посилки спільного типу {@link Parcel}, а кожен показник обчислює потоковим
- * запитом {@link ParcelQueries}, тому новий підтип посилки не потребує його змін.
+ * <p>Клас зберігає посилки спільного типу {@link Parcel}, а показники за їхніми значеннями обчислює
+ * потоковими запитами {@link ParcelQueries}, тому новий підтип посилки не потребує його змін.
  */
 public final class DeliverySummary {
     private final List<Parcel> parcels = new ArrayList<>();
@@ -20,14 +20,14 @@ public final class DeliverySummary {
     }
 
     /**
-     * Обчислює показники за списком посилок.
+     * Створює набір показників для списку посилок.
      *
      * @param parcels коректні посилки в порядку вхідного файла
      * @return показники всіх посилок списку
      */
     public static DeliverySummary of(List<Parcel> parcels) {
         DeliverySummary summary = new DeliverySummary();
-        summary.parcels.addAll(parcels);
+        parcels.forEach(summary::add);
         return summary;
     }
 

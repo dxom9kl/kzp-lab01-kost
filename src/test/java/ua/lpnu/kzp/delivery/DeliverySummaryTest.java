@@ -2,8 +2,10 @@ package ua.lpnu.kzp.delivery;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
@@ -126,6 +128,24 @@ class DeliverySummaryTest {
         // Assert
         assertEquals("2.57", String.format(Locale.ROOT, "%.2f", average));
         assertEquals("2.58", String.format(Locale.ROOT, "%.2f", ParcelQueries.weightStatistics(parcels).getAverage()));
+    }
+
+    /* Загальна вартість додається послідовно, як у попередній роботі: 59.91 грн + 354.195 грн. */
+    @Test
+    void totalCostKeepsArithmeticOfPreviousWork() {
+        DeliverySummary summary = DeliverySummary.of(List.of(
+                new RegularParcel("UA-1", 1.991, "Київ", 1),
+                new ExpressParcel("UA-2", 19.613, "Львів", 1)));
+
+        assertEquals(414.105, summary.totalCost());
+    }
+
+    /* Відсутня посилка відхиляється одразу, а не під час обчислення показника. */
+    @Test
+    void ofRejectsNullParcel() {
+        List<Parcel> parcels = Arrays.asList(new RegularParcel("UA-1", 1.0, "Київ", 1), null);
+
+        assertThrows(NullPointerException.class, () -> DeliverySummary.of(parcels));
     }
 
     /* Кількість за видами визначає фактичний підтип кожної посилки. */

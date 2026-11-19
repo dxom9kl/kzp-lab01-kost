@@ -4,13 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class DeliverySummaryTest {
     private static final double DELTA = 0.0001;
 
-    private static String[] parcel(String id, String weightKg, String city, String days, String express) {
-        return new String[] {id, weightKg, city, days, express};
+    private static Parcel parcel(String id, String weightKg, String city, String days, String express) {
+        return Parcel.fromCsv(String.join(";", id, weightKg, city, days, express));
     }
 
     /* Порожній набір не ділить на нуль і не має посилки з найбільшим терміном. */
@@ -75,5 +76,32 @@ class DeliverySummaryTest {
         summary.add(parcel("UA-3", "1.00", "Київ", "1", "true"));
 
         assertEquals(2, summary.expressCount());
+    }
+
+    /* Показники обчислюються зі списку об'єктів за тими самими формулами. */
+    @Test
+    void calculatesMetricsFromList() {
+        // Arrange
+        List<Parcel> parcels = List.of(
+                parcel("UA-1", "1.00", "Київ", "2", "true"),
+                parcel("UA-2", "2.00", "Ужгород", "5", "false"),
+                parcel("UA-3", "3.00", "Львів", "5", "true"));
+
+        // Act
+        DeliverySummary summary = DeliverySummary.of(parcels);
+
+        // Assert
+        assertEquals(3, summary.count());
+        assertEquals(2.0, summary.averageWeightKg(), DELTA);
+        assertEquals(5, summary.maxDeliveryDays());
+        assertEquals("UA-2", summary.longestDeliveryId());
+        assertEquals("Ужгород", summary.longestDeliveryCity());
+        assertEquals(2, summary.expressCount());
+    }
+
+    /* Порожній список дає порожні показники. */
+    @Test
+    void emptyListGivesEmptySummary() {
+        assertTrue(DeliverySummary.of(List.of()).isEmpty());
     }
 }

@@ -37,6 +37,30 @@ class DeliveryControllerTest {
         return text.lines().anyMatch(line -> line.matches(regex));
     }
 
+    private static List<String> metrics(String report) {
+        return report.lines()
+                .filter(line -> line.matches(
+                        "(Коректних записів|Середня вага|Найбільший термін доставлення|Експрес-доставлень)\\s.*"))
+                .toList();
+    }
+
+    /* Хибні рядки не потрапляють до списку посилок: показники ті самі, що й без цих рядків. */
+    @Test
+    void invalidLinesDoNotChangeMetrics() throws IOException {
+        // Arrange
+        String first = "UA-1;2.00;Львів;1;true";
+        String second = "UA-2;4.00;Одеса;3;false";
+        process(first, second);
+        List<String> expected = metrics(report());
+
+        // Act
+        process("UA-3;0;Київ;9;true", first, "UA-4;100.00;Київ;9;так", second, "UA-5;-1;Київ;9;true");
+
+        // Assert
+        assertEquals(4, expected.size());
+        assertEquals(expected, metrics(report()));
+    }
+
     /* Хибний рядок не зупиняє обробку, а потрапляє у звіт із номером і причиною. */
     @Test
     void continuesAfterInvalidLine() throws IOException {

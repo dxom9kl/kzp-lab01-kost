@@ -9,7 +9,7 @@ import java.util.Locale;
  *
  * @param count кількість посилок
  * @param totalWeightKg сумарна вага в кілограмах
- * @param maxDeliveryDays найбільший термін доставлення в днях
+ * @param maxDeliveryDays найбільший розрахунковий термін доставлення в днях
  */
 public record WeightDelivery(int count, double totalWeightKg, int maxDeliveryDays) {
     /** Підсумок порожнього набору посилок. */
@@ -39,12 +39,12 @@ public record WeightDelivery(int count, double totalWeightKg, int maxDeliveryDay
     /**
      * Додає посилку до підсумку.
      *
-     * @param parcel коректна посилка
+     * @param parcel коректна посилка будь-якого підтипу
      * @return новий підсумок із урахуванням посилки
      */
     public WeightDelivery plus(Parcel parcel) {
         return new WeightDelivery(count + 1, totalWeightKg + parcel.getWeightKg(),
-                Math.max(maxDeliveryDays, parcel.getDeliveryDays()));
+                Math.max(maxDeliveryDays, parcel.calculatedDays()));
     }
 
     /**

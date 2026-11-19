@@ -108,4 +108,49 @@ class DeliverySummaryTest {
         assertEquals("", summary.longestDeliveryId());
         assertEquals("", summary.longestDeliveryCity());
     }
+
+    /* Кількість за видами визначає фактичний підтип кожної посилки. */
+    @Test
+    void countsParcelsByKind() {
+        DeliverySummary summary = DeliverySummary.of(List.of(
+                new RegularParcel("UA-1", 1.0, "Київ", 1),
+                new ExpressParcel("UA-2", 1.0, "Львів", 1),
+                new ExpressParcel("UA-3", 1.0, "Одеса", 1)));
+
+        assertEquals(1, summary.countOf(DeliveryKind.REGULAR));
+        assertEquals(2, summary.countOf(DeliveryKind.EXPRESS));
+        assertEquals(2, summary.expressCount());
+    }
+
+    /* Без посилок кількість кожного виду й загальна вартість дорівнюють нулю. */
+    @Test
+    void emptySummaryHasNoKindsAndCost() {
+        DeliverySummary summary = new DeliverySummary();
+
+        assertEquals(0, summary.countOf(DeliveryKind.REGULAR));
+        assertEquals(0, summary.countOf(DeliveryKind.EXPRESS));
+        assertEquals(0.0, summary.totalCost(), DELTA);
+    }
+
+    /* Найбільший термін обчислює фактичний підтип: 2 + 3 дні проти 6 − 4 днів. */
+    @Test
+    void usesCalculatedDaysOfActualSubtype() {
+        DeliverySummary summary = DeliverySummary.of(List.of(
+                new RegularParcel("UA-1", 1.0, "Київ", 2, 3),
+                new ExpressParcel("UA-2", 1.0, "Львів", 6, 4)));
+
+        assertEquals(5, summary.maxDeliveryDays());
+        assertEquals("UA-1", summary.longestDeliveryId());
+        assertEquals("Київ", summary.longestDeliveryCity());
+    }
+
+    /* Загальна вартість складається з вартостей різних підтипів: 60 грн + 140 грн. */
+    @Test
+    void sumsCostOfDifferentSubtypes() {
+        DeliverySummary summary = DeliverySummary.of(List.of(
+                new RegularParcel("UA-1", 2.0, "Київ", 1),
+                new ExpressParcel("UA-2", 2.0, "Львів", 3, 2)));
+
+        assertEquals(200.0, summary.totalCost(), DELTA);
+    }
 }

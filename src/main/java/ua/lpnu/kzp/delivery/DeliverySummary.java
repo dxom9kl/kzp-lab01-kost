@@ -1,15 +1,19 @@
 package ua.lpnu.kzp.delivery;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Накопичує чотири показники варіанта за коректними посилками:
- * кількість записів, середню вагу, найбільший термін доставлення та кількість
- * експрес-доставлень.
+ * Накопичує показники варіанта за коректними посилками: кількість записів, середню вагу,
+ * найбільший термін доставлення, кількість експрес-доставлень і загальну вартість.
+ *
+ * <p>Клас працює лише зі спільним типом {@link Parcel}, тому новий підтип посилки не потребує його змін.
  */
 public final class DeliverySummary {
+    private final Map<DeliveryKind, Integer> countByKind = new EnumMap<>(DeliveryKind.class);
     private WeightDelivery totals = WeightDelivery.EMPTY;
-    private int expressCount;
+    private double totalCost;
     private Parcel longestDelivery;
 
     /** Створює порожній набір показників. */
@@ -32,17 +36,17 @@ public final class DeliverySummary {
     /**
      * Додає посилку до показників.
      *
-     * @param parcel коректна посилка
+     * @param parcel коректна посилка будь-якого підтипу
      */
     public void add(Parcel parcel) {
         // Перший запис задає початковий максимум; за рівного терміну лишається перша посилка.
-        if (longestDelivery == null || parcel.getDeliveryDays() > totals.maxDeliveryDays()) {
+        if (longestDelivery == null || parcel.calculatedDays() > totals.maxDeliveryDays()) {
             longestDelivery = parcel;
         }
         totals = totals.plus(parcel);
-        if (parcel.isExpress()) {
-            expressCount++;
-        }
+        // Вид і вартість повертає фактичний підтип, тому розгалуження за типом посилки не потрібне.
+        countByKind.merge(parcel.getKind(), 1, Integer::sum);
+        totalCost += parcel.calculatedCost();
     }
 
     /**
@@ -105,6 +109,25 @@ public final class DeliverySummary {
      * @return кількість записів з ознакою {@code express=true}
      */
     public int expressCount() {
-        return expressCount;
+        return countOf(DeliveryKind.EXPRESS);
+    }
+
+    /**
+     * Повертає кількість посилок заданого виду доставлення.
+     *
+     * @param kind вид доставлення
+     * @return кількість посилок цього виду
+     */
+    public int countOf(DeliveryKind kind) {
+        return countByKind.getOrDefault(kind, 0);
+    }
+
+    /**
+     * Повертає загальну вартість доставлення всіх посилок.
+     *
+     * @return вартість у гривнях або {@code 0.0}, якщо записів немає
+     */
+    public double totalCost() {
+        return totalCost;
     }
 }

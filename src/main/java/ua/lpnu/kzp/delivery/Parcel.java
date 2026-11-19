@@ -147,6 +147,15 @@ public abstract class Parcel {
     }
 
     /**
+     * Визначає стан посилки на контрольний день за її розрахунковим терміном.
+     *
+     * @return стан посилки
+     */
+    public final DeliveryStatus getStatus() {
+        return DeliveryStatus.ofDays(calculatedDays());
+    }
+
+    /**
      * Повертає вид доставлення, який відповідає підтипу посилки.
      *
      * @return вид доставлення

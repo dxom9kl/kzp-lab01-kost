@@ -12,6 +12,11 @@ public final class DeliverySummary {
     private int expressCount;
     private Parcel longestDelivery;
 
+    /** Створює порожній набір показників. */
+    public DeliverySummary() {
+        // Початковий стан задано в оголошеннях полів.
+    }
+
     /**
      * Обчислює показники за списком посилок.
      *

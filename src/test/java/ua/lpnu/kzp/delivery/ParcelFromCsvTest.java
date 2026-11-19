@@ -1,8 +1,8 @@
 package ua.lpnu.kzp.delivery;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.stream.Stream;
@@ -12,50 +12,54 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class ParcelParserTest {
-    /* Коректний рядок повертається полями в порядку формату. */
+class ParcelFromCsvTest {
+    /* Коректний рядок перетворюється на посилку з полями в порядку формату. */
     @Test
-    void parsesValidLine() throws InvalidRecordException {
-        String[] fields = ParcelParser.parse("UA-1001;2.50;Львів;1;true");
+    void parsesValidLine() {
+        Parcel parcel = Parcel.fromCsv("UA-1001;2.50;Львів;1;true");
 
-        assertArrayEquals(new String[] {"UA-1001", "2.50", "Львів", "1", "true"}, fields);
+        assertEquals("UA-1001", parcel.getId());
+        assertEquals(2.50, parcel.getWeightKg());
+        assertEquals("Львів", parcel.getCity());
+        assertEquals(1, parcel.getDeliveryDays());
+        assertTrue(parcel.isExpress());
     }
 
     /* Українські літери, апостроф, дефіс і пробіл у назві міста зберігаються без змін. */
     @Test
-    void keepsUkrainianCityName() throws InvalidRecordException {
-        String[] fields = ParcelParser.parse("UA-1007;3.10;Кам'янець-Подільський;6;true");
+    void keepsUkrainianCityName() {
+        Parcel parcel = Parcel.fromCsv("UA-1007;3.10;Кам'янець-Подільський;6;true");
 
-        assertEquals("Кам'янець-Подільський", fields[ParcelParser.CITY]);
-        assertEquals("Біла Церква", ParcelParser.parse("UA-1008;1.60;Біла Церква;0;true")[ParcelParser.CITY]);
+        assertEquals("Кам'янець-Подільський", parcel.getCity());
+        assertEquals("Біла Церква", Parcel.fromCsv("UA-1008;1.60;Біла Церква;0;true").getCity());
     }
 
     /* Нуль днів означає доставлення в день відправлення і є допустимим значенням. */
     @Test
-    void acceptsSameDayDelivery() throws InvalidRecordException {
-        assertEquals("0", ParcelParser.parse("UA-1;1.00;Київ;0;false")[ParcelParser.DELIVERY_DAYS]);
+    void acceptsSameDayDelivery() {
+        assertEquals(0, Parcel.fromCsv("UA-1;1.00;Київ;0;false").getDeliveryDays());
     }
 
     /* Вага записується цілим числом або десятковим із крапкою. */
     @ParameterizedTest
     @ValueSource(strings = {"2", "2.5", "0.75", "12.40"})
-    void acceptsDecimalWeight(String weightKg) throws InvalidRecordException {
-        assertEquals(weightKg, ParcelParser.parse("UA-1;" + weightKg + ";Київ;2;false")[ParcelParser.WEIGHT_KG]);
+    void acceptsDecimalWeight(String weightKg) {
+        assertEquals(Double.parseDouble(weightKg), Parcel.fromCsv("UA-1;" + weightKg + ";Київ;2;false").getWeightKg());
     }
 
     /* Ознака експрес-доставлення приймає рівно два значення. */
     @ParameterizedTest
     @ValueSource(strings = {"true", "false"})
-    void acceptsBooleanExpress(String express) throws InvalidRecordException {
-        assertEquals(express, ParcelParser.parse("UA-1;1.00;Київ;2;" + express)[ParcelParser.EXPRESS]);
+    void acceptsBooleanExpress(String express) {
+        assertEquals(Boolean.parseBoolean(express), Parcel.fromCsv("UA-1;1.00;Київ;2;" + express).isExpress());
     }
 
     /* Кожен хибний рядок відкидається з точною причиною. */
     @ParameterizedTest(name = "[{index}] {1}")
     @MethodSource("invalidLines")
     void rejectsInvalidLine(String line, String reason) {
-        InvalidRecordException exception =
-                assertThrows(InvalidRecordException.class, () -> ParcelParser.parse(line));
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> Parcel.fromCsv(line));
 
         assertEquals(reason, exception.getMessage());
     }

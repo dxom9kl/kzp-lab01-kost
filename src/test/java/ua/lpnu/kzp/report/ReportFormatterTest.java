@@ -9,14 +9,15 @@ import java.util.List;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import ua.lpnu.kzp.delivery.DeliverySummary;
+import ua.lpnu.kzp.delivery.Parcel;
 
 class ReportFormatterTest {
     private static final Path INPUT = Path.of("data", "input.csv");
 
     private static DeliverySummary sampleSummary() {
         DeliverySummary summary = new DeliverySummary();
-        summary.add(new String[] {"UA-1", "2.50", "Львів", "1", "true"});
-        summary.add(new String[] {"UA-2", "1.50", "Ужгород", "5", "false"});
+        summary.add(Parcel.fromCsv("UA-1;2.50;Львів;1;true"));
+        summary.add(Parcel.fromCsv("UA-2;1.50;Ужгород;5;false"));
         return summary;
     }
 

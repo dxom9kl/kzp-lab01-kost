@@ -11,8 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import ua.lpnu.kzp.delivery.DeliverySummary;
-import ua.lpnu.kzp.delivery.InvalidRecordException;
-import ua.lpnu.kzp.delivery.ParcelParser;
+import ua.lpnu.kzp.delivery.Parcel;
 import ua.lpnu.kzp.report.FileReport;
 import ua.lpnu.kzp.report.ReportFormatter;
 
@@ -57,8 +56,9 @@ public final class DeliveryController {
             return ExitCode.DATA_ERROR;
         }
 
-        DeliverySummary summary = new DeliverySummary();
-        List<String> errors = collect(lines, summary);
+        List<Parcel> parcels = new ArrayList<>();
+        List<String> errors = collect(lines, parcels);
+        DeliverySummary summary = DeliverySummary.of(parcels);
         String report = ReportFormatter.format(input, summary, errors);
         out.print(report);
         try {
@@ -72,29 +72,29 @@ public final class DeliveryController {
     }
 
     /*
-     * Додає коректні записи до показників і повертає причини пропуску решти рядків.
+     * Додає коректні посилки до списку й повертає причини пропуску решти рядків.
      * Хибний рядок не зупиняє обробку, а потрапляє у звіт із номером і причиною.
      */
-    private static List<String> collect(List<String> lines, DeliverySummary summary) {
+    private static List<String> collect(List<String> lines, List<Parcel> parcels) {
         List<String> errors = new ArrayList<>();
         Map<String, Integer> firstLineById = new HashMap<>();
         for (int index = 0; index < lines.size(); index++) {
             int lineNumber = index + 1;
-            String[] fields;
+            Parcel parcel;
             try {
-                fields = ParcelParser.parse(lines.get(index));
-            } catch (InvalidRecordException exception) {
+                parcel = Parcel.fromCsv(lines.get(index));
+            } catch (IllegalArgumentException exception) {
                 errors.add(skipped(lineNumber, exception.getMessage()));
                 continue;
             }
             // Ідентифікатор посилки унікальний: повторний запис спотворив би всі показники.
-            Integer firstLine = firstLineById.putIfAbsent(fields[ParcelParser.ID], lineNumber);
+            Integer firstLine = firstLineById.putIfAbsent(parcel.getId(), lineNumber);
             if (firstLine != null) {
                 errors.add(skipped(lineNumber, "повторний ідентифікатор посилки %s (уперше в рядку %d)"
-                        .formatted(fields[ParcelParser.ID], firstLine)));
+                        .formatted(parcel.getId(), firstLine)));
                 continue;
             }
-            summary.add(fields);
+            parcels.add(parcel);
         }
         return errors;
     }

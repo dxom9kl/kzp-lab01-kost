@@ -1,35 +1,46 @@
 package ua.lpnu.kzp.delivery;
 
+import java.util.List;
+
 /**
- * Накопичує чотири показники варіанта за коректними записами про посилки:
+ * Накопичує чотири показники варіанта за коректними посилками:
  * кількість записів, середню вагу, найбільший термін доставлення та кількість
  * експрес-доставлень.
  */
 public final class DeliverySummary {
-    private int count;
-    private double totalWeightKg;
+    private WeightDelivery totals = WeightDelivery.EMPTY;
     private int expressCount;
-    private int maxDeliveryDays;
-    private String longestDeliveryId = "";
-    private String longestDeliveryCity = "";
+    private Parcel longestDelivery;
+
+    /** Створює порожній набір показників. */
+    public DeliverySummary() {
+        // Початковий стан задано в оголошеннях полів.
+    }
 
     /**
-     * Додає перевірений запис до показників.
+     * Обчислює показники за списком посилок.
      *
-     * @param fields поля запису, які повернув {@link ParcelParser#parse(String)}
+     * @param parcels коректні посилки в порядку вхідного файла
+     * @return показники всіх посилок списку
      */
-    public void add(String[] fields) {
-        double weightKg = Double.parseDouble(fields[ParcelParser.WEIGHT_KG]);
-        int deliveryDays = Integer.parseInt(fields[ParcelParser.DELIVERY_DAYS]);
+    public static DeliverySummary of(List<Parcel> parcels) {
+        DeliverySummary summary = new DeliverySummary();
+        parcels.forEach(summary::add);
+        return summary;
+    }
+
+    /**
+     * Додає посилку до показників.
+     *
+     * @param parcel коректна посилка
+     */
+    public void add(Parcel parcel) {
         // Перший запис задає початковий максимум; за рівного терміну лишається перша посилка.
-        if (count == 0 || deliveryDays > maxDeliveryDays) {
-            maxDeliveryDays = deliveryDays;
-            longestDeliveryId = fields[ParcelParser.ID];
-            longestDeliveryCity = fields[ParcelParser.CITY];
+        if (longestDelivery == null || parcel.getDeliveryDays() > totals.maxDeliveryDays()) {
+            longestDelivery = parcel;
         }
-        count++;
-        totalWeightKg += weightKg;
-        if (Boolean.parseBoolean(fields[ParcelParser.EXPRESS])) {
+        totals = totals.plus(parcel);
+        if (parcel.isExpress()) {
             expressCount++;
         }
     }
@@ -40,7 +51,7 @@ public final class DeliverySummary {
      * @return кількість доданих записів
      */
     public int count() {
-        return count;
+        return totals.count();
     }
 
     /**
@@ -49,7 +60,7 @@ public final class DeliverySummary {
      * @return {@code true}, якщо коректних записів немає
      */
     public boolean isEmpty() {
-        return count == 0;
+        return totals.count() == 0;
     }
 
     /**
@@ -58,8 +69,7 @@ public final class DeliverySummary {
      * @return середня вага в кілограмах або {@code 0.0}, якщо записів немає
      */
     public double averageWeightKg() {
-        // Порожній набір обробляємо окремо, щоб не ділити на нуль.
-        return count == 0 ? 0.0 : totalWeightKg / count;
+        return totals.averageWeightKg();
     }
 
     /**
@@ -68,7 +78,7 @@ public final class DeliverySummary {
      * @return термін у днях або {@code 0}, якщо записів немає
      */
     public int maxDeliveryDays() {
-        return maxDeliveryDays;
+        return totals.maxDeliveryDays();
     }
 
     /**
@@ -77,7 +87,7 @@ public final class DeliverySummary {
      * @return ідентифікатор або порожній рядок, якщо записів немає
      */
     public String longestDeliveryId() {
-        return longestDeliveryId;
+        return longestDelivery == null ? "" : longestDelivery.getId();
     }
 
     /**
@@ -86,7 +96,7 @@ public final class DeliverySummary {
      * @return назва міста або порожній рядок, якщо записів немає
      */
     public String longestDeliveryCity() {
-        return longestDeliveryCity;
+        return longestDelivery == null ? "" : longestDelivery.getCity();
     }
 
     /**

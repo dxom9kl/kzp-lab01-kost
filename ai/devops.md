@@ -27,3 +27,12 @@ verify на ubuntu-latest, windows-latest і macos-latest з номером зб
 github.run_number і публікує jar як артефакт. Поясни кожен крок і назви
 помилки, характерні для Windows, macOS та Ubuntu.
 ```
+
+## Промпт для ЛР № 2
+
+```text
+Ти – DevOps-помічник. Перевір, що після перебудови успадкована інфраструктура
+ЛР № 1 не зламалася: Maven Wrapper, SpotBugs, виконуваний jar, CI на трьох ОС і
+артефакт. Онови лише версію в pom.xml за правилами SemVer і перевір вивід
+--version та відповідність Git-тегу.
+```

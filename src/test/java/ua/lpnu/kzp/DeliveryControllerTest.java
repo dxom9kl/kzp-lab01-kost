@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -35,6 +36,55 @@ class DeliveryControllerTest {
 
     private static boolean hasLine(String text, String regex) {
         return text.lines().anyMatch(line -> line.matches(regex));
+    }
+
+    private static List<String> metrics(String report) {
+        return report.lines()
+                .filter(line -> line.matches(
+                        "(Коректних записів|Середня вага|Найбільший термін доставлення|Експрес-доставлень)\\s.*"))
+                .toList();
+    }
+
+    /* Хибні рядки не потрапляють до списку посилок: показники ті самі, що й без цих рядків. */
+    @Test
+    void invalidLinesDoNotChangeMetrics() throws IOException {
+        // Arrange
+        String first = "UA-1;2.00;Львів;1;true";
+        String second = "UA-2;4.00;Одеса;3;false";
+        process(first, second);
+        List<String> expected = metrics(report());
+
+        // Act
+        process("UA-3;0;Київ;9;true", first, "UA-4;100.00;Київ;9;так", second, "UA-5;-1;Київ;9;true");
+
+        // Assert
+        assertEquals(4, expected.size());
+        assertEquals(expected, metrics(report()));
+    }
+
+    /* Кожен наступний повтор називає рядок першої появи, а не попередній повтор. */
+    @Test
+    void repeatedDuplicateNamesFirstLine() throws IOException {
+        process("UA-1;2.00;Київ;1;true", "UA-1;2.00;Київ;1;true", "UA-1;2.00;Київ;1;true");
+
+        assertTrue(report().contains("Рядок 3: повторний ідентифікатор посилки UA-1 (уперше в рядку 1)"),
+                report());
+    }
+
+    /* Номер рядка в причині пропуску записується цифрами 0–9 за будь-якої локалі за замовчуванням. */
+    @Test
+    void duplicateReasonUsesAsciiDigitsRegardlessOfDefaultLocale() throws IOException {
+        Locale saved = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("ar-SA-u-nu-arab"));
+
+            process("UA-1;2.00;Київ;1;true", "UA-1;2.00;Київ;1;true");
+
+            assertTrue(report().contains("Рядок 2: повторний ідентифікатор посилки UA-1 (уперше в рядку 1)"),
+                    report());
+        } finally {
+            Locale.setDefault(saved);
+        }
     }
 
     /* Хибний рядок не зупиняє обробку, а потрапляє у звіт із номером і причиною. */

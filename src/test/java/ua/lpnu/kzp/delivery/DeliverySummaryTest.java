@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Locale;
 import org.junit.jupiter.api.Test;
 
 class DeliverySummaryTest {
@@ -107,6 +108,24 @@ class DeliverySummaryTest {
         assertTrue(summary.isEmpty());
         assertEquals("", summary.longestDeliveryId());
         assertEquals("", summary.longestDeliveryCity());
+    }
+
+    /* Середня вага звіту округлюється так само, як у попередніх роботах, а не як у summarizingDouble. */
+    @Test
+    void averageKeepsArithmeticOfPreviousWorks() {
+        // Arrange
+        List<Parcel> parcels = List.of(
+                new RegularParcel("UA-1", 3.546, "Київ", 1),
+                new RegularParcel("UA-2", 1.279, "Львів", 1),
+                new RegularParcel("UA-3", 4.662, "Одеса", 1),
+                new RegularParcel("UA-4", 0.813, "Суми", 1));
+
+        // Act
+        double average = DeliverySummary.of(parcels).averageWeightKg();
+
+        // Assert
+        assertEquals("2.57", String.format(Locale.ROOT, "%.2f", average));
+        assertEquals("2.58", String.format(Locale.ROOT, "%.2f", ParcelQueries.weightStatistics(parcels).getAverage()));
     }
 
     /* Кількість за видами визначає фактичний підтип кожної посилки. */

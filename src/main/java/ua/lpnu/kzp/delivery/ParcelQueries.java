@@ -2,6 +2,7 @@ package ua.lpnu.kzp.delivery;
 
 import java.util.Comparator;
 import java.util.DoubleSummaryStatistics;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -109,6 +110,54 @@ public final class ParcelQueries {
         return streamOf(parcels)
                 .filter(parcel -> parcel.getId().equals(id))
                 .findFirst();
+    }
+
+    /**
+     * Обчислює проміжний підсумок послідовним додаванням посилок.
+     *
+     * <p>{@link #weightStatistics(List)} використовує компенсоване підсумовування, тому його середнє
+     * може округлитися інакше. Показник звіту обчислюється так само, як у попередніх роботах.
+     *
+     * @param parcels посилки
+     * @return кількість посилок, сумарна вага й найбільший розрахунковий термін
+     */
+    public static WeightDelivery totals(List<Parcel> parcels) {
+        return streamOf(parcels).reduce(WeightDelivery.EMPTY, WeightDelivery::plus, WeightDelivery::merge);
+    }
+
+    /**
+     * Шукає посилку з найбільшим розрахунковим терміном.
+     *
+     * @param parcels посилки
+     * @return перша з посилок із найбільшим терміном або порожній результат
+     */
+    public static Optional<Parcel> longestDelivery(List<Parcel> parcels) {
+        // Строге порівняння залишає першу посилку серед рівних за терміном.
+        return streamOf(parcels)
+                .reduce((longest, next) -> next.calculatedDays() > longest.calculatedDays() ? next : longest);
+    }
+
+    /**
+     * Рахує посилки кожного виду доставлення.
+     *
+     * @param parcels посилки
+     * @return кількість посилок за видом доставлення
+     */
+    public static Map<DeliveryKind, Long> countByKind(List<Parcel> parcels) {
+        return streamOf(parcels).collect(Collectors.groupingBy(
+                Parcel::getKind, () -> new EnumMap<>(DeliveryKind.class), Collectors.counting()));
+    }
+
+    /**
+     * Обчислює загальну вартість доставлення.
+     *
+     * @param parcels посилки
+     * @return сума вартостей, які повертають фактичні підтипи посилок
+     */
+    public static double totalCost(List<Parcel> parcels) {
+        return streamOf(parcels)
+                .mapToDouble(Parcel::calculatedCost)
+                .sum();
     }
 
     /* Кожен запит отримує новий потік, бо використаний потік не можна запустити вдруге. */

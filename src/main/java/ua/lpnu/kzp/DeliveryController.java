@@ -3,6 +3,7 @@ package ua.lpnu.kzp;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.CharacterCodingException;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -134,6 +135,7 @@ public final class DeliveryController {
         parcels.forEach(parcel -> records.add(ParcelRecord.of(parcel)));
         List<ParcelRecord> restored;
         try {
+            requireSeparateCsv();
             CsvExporter.write(csv, ParcelRecord.class, records.all());
             restored = CsvImporter.read(csv, ParcelRecord.class, ParcelRecord::fromFields);
         } catch (DataStorageException exception) {
@@ -152,6 +154,21 @@ public final class DeliveryController {
             err.printf("Відновлені з CSV записи відрізняються від записаних%n");
         }
         return same;
+    }
+
+    /*
+     * ArgumentsParser порівнює лише текст шляхів і не бачить інших назв того самого файла: жорсткого посилання,
+     * крапки наприкінці назви у Windows чи іншого регістру в macOS. Тому перед записом порівнюються самі файли:
+     * вхідний файл уже прочитано, а звіт записано, тож обидва існують.
+     */
+    private void requireSeparateCsv() throws DataStorageException {
+        try {
+            if (Files.exists(csv) && (Files.isSameFile(csv, input) || Files.isSameFile(csv, output))) {
+                throw new DataStorageException("CSV-файл %s є вхідним файлом або файлом звіту".formatted(csv));
+            }
+        } catch (IOException exception) {
+            throw new DataStorageException("не вдалося перевірити CSV-файл %s".formatted(csv), exception);
+        }
     }
 
     /* Найглибша причина в ланцюгу: IOException, NumberFormatException тощо. */

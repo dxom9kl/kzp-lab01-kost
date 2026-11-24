@@ -208,6 +208,35 @@ class DeliveryControllerTest {
         assertTrue(hasLine(report(), "Коректних записів\\s+1"), report());
     }
 
+    /* Інша назва вхідного файла (жорстке посилання) не дає експорту перезаписати вхідні дані. */
+    @Test
+    void refusesCsvThatIsAnotherNameOfInput() throws IOException {
+        Path input = directory.resolve("input.csv");
+        Files.write(input, List.of("UA-1;2.00;Львів;1;true"), StandardCharsets.UTF_8);
+        Path alias = Files.createLink(directory.resolve("alias.csv"), input);
+
+        int code = new DeliveryController(input, directory.resolve("report.txt"), alias).run(out, err);
+
+        assertEquals(ExitCode.DATA_ERROR, code);
+        assertEquals(List.of("UA-1;2.00;Львів;1;true"), Files.readAllLines(input, StandardCharsets.UTF_8));
+        assertEquals("Помилка CSV: CSV-файл %s є вхідним файлом або файлом звіту%n".formatted(alias),
+                errBuffer.toString(StandardCharsets.UTF_8));
+    }
+
+    /* Інша назва файла звіту теж відхиляється, тому звіт лишається звітом. */
+    @Test
+    void refusesCsvThatIsAnotherNameOfReport() throws IOException {
+        Path input = directory.resolve("input.csv");
+        Files.write(input, List.of("UA-1;2.00;Львів;1;true"), StandardCharsets.UTF_8);
+        Path report = Files.writeString(directory.resolve("report.txt"), "старий звіт", StandardCharsets.UTF_8);
+        Path alias = Files.createLink(directory.resolve("alias.csv"), report);
+
+        int code = new DeliveryController(input, report, alias).run(out, err);
+
+        assertEquals(ExitCode.DATA_ERROR, code);
+        assertTrue(hasLine(report(), "Коректних записів\\s+1"), report());
+    }
+
     /* Без коректних посилок CSV містить лише заголовок, а код завершення лишається 1. */
     @Test
     void noValidParcelsGiveHeaderOnlyCsv() throws IOException {

@@ -137,6 +137,18 @@ class ParcelRecordTest {
         assertInstanceOf(NumberFormatException.class, exception.getCause());
     }
 
+    /* BigDecimal розпізнає й цифри інших писемностей, але вага в CSV записується лише цифрами 0–9. */
+    @ParameterizedTest(name = "[{index}] «{0}»")
+    @ValueSource(strings = {"２.５", "٢.٥"})
+    void rejectsNonAsciiDigits(String weight) {
+        List<String> fields = List.of("Львів", "", "DELIVERED", "UA-1", weight);
+
+        DataStorageException exception = assertThrows(DataStorageException.class,
+                () -> ParcelRecord.fromFields(fields));
+
+        assertEquals("вага має бути записана цифрами 0–9: \"%s\"".formatted(weight), exception.getMessage());
+    }
+
     /* Невідомий статус зберігає IllegalArgumentException від valueOf як першопричину. */
     @ParameterizedTest(name = "[{index}] «{0}»")
     @ValueSource(strings = {"LOST", "in_transit", "у дорозі", ""})

@@ -131,8 +131,10 @@ class ParcelCsvRoundTripTest {
 
         CsvExporter.write(path, ParcelRecord.class, records.all());
 
-        assertEquals(records.all(), load(path));
+        List<ParcelRecord> restored = load(path);
+        assertEquals(records.all(), restored);
         assertEquals(List.of(DeliveryStatus.DELIVERED, DeliveryStatus.IN_TRANSIT, DeliveryStatus.IN_TRANSIT),
-                load(path).stream().map(ParcelRecord::status).toList());
+                restored.stream().map(ParcelRecord::status).toList());
+        assertTrue(restored.stream().map(ParcelRecord::dimensions).allMatch(String::isEmpty));
     }
 }

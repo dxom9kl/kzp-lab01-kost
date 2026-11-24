@@ -92,6 +92,31 @@ class CsvImporterTest {
         assertInstanceOf(NumberFormatException.class, domain.getCause());
     }
 
+    /* Неперевірений виняток предметного розбору теж отримує номер запису й лишається причиною. */
+    @Test
+    void wrapsUncheckedMapperExceptionWithRecordNumber() throws Exception {
+        Path path = file("назва,населення\nЛьвів,717000\nКиїв,багато\n");
+        CsvImporter.RowMapper<City> careless = fields -> new City(fields.get(0), Integer.parseInt(fields.get(1)));
+
+        DataStorageException exception = assertThrows(DataStorageException.class,
+                () -> CsvImporter.read(path, City.class, careless));
+
+        assertTrue(exception.getMessage().startsWith("запис 3 CSV-файла %s: ".formatted(path)), exception.getMessage());
+        assertInstanceOf(NumberFormatException.class, exception.getCause());
+    }
+
+    /* Перетворення, що повернуло null, дає помилку з номером запису, а не NullPointerException без контексту. */
+    @Test
+    void rejectsNullFromMapper() throws Exception {
+        Path path = file("назва,населення\nЛьвів,717000\n");
+
+        DataStorageException exception = assertThrows(DataStorageException.class,
+                () -> CsvImporter.read(path, City.class, fields -> null));
+
+        assertEquals("запис 2 CSV-файла %s не відновлено: перетворення повернуло null".formatted(path),
+                exception.getMessage());
+    }
+
     /* Позначка порядку байтів не потрапляє в першу назву стовпця. */
     @Test
     void ignoresByteOrderMark() throws Exception {

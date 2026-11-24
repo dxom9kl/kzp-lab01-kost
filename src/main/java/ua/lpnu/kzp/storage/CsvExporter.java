@@ -23,9 +23,9 @@ import java.util.stream.Collectors;
  * працює з будь-яким плоским класом або record, поля якого позначено {@code @CsvColumn}, зокрема поля
  * суперкласів. Порядок стовпців визначає сортування Java-імен полів, а назви стовпців беруться з анотації.
  *
- * <p>Значення перетворюється на текст через {@link String#valueOf(Object)}, а {@code null} дає порожнє поле.
- * Значення з комою, лапкою, CR чи LF береться в лапки, а внутрішня лапка подвоюється. Кожен запис завершує
- * роздільник рядка поточної ОС, а файл записується в UTF-8.
+ * <p>Значення перетворюється на текст через {@link String#valueOf(Object)}, константа enum – через
+ * {@link Enum#name()}, а {@code null} дає порожнє поле. Значення з комою, лапкою, CR чи LF береться в лапки, а
+ * внутрішня лапка подвоюється. Кожен запис завершує роздільник рядка поточної ОС, а файл записується в UTF-8.
  */
 public final class CsvExporter {
     private static final String SEPARATOR = ",";
@@ -87,7 +87,7 @@ public final class CsvExporter {
             }
             List<String> values = new ArrayList<>(fields.size());
             for (Field field : fields) {
-                values.add(Objects.toString(read(field, record), ""));
+                values.add(text(read(field, record)));
             }
             appendRecord(csv, values);
         }
@@ -104,6 +104,17 @@ public final class CsvExporter {
      */
     public static List<String> header(Class<?> type) throws DataStorageException {
         return names(columns(type));
+    }
+
+    /*
+     * Enum.valueOf відновлює константу за назвою, а toString можна перевизначити, наприклад підписом
+     * «у дорозі». Тому константа enum записується назвою, інші значення – через String.valueOf.
+     */
+    private static String text(Object value) {
+        if (value == null) {
+            return "";
+        }
+        return value instanceof Enum<?> constant ? constant.name() : String.valueOf(value);
     }
 
     /* Бере значення в лапки, якщо воно містить кому, лапку або перенесення рядка. */

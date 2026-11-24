@@ -90,12 +90,21 @@ public final class CsvImporter {
         }
         List<T> records = new ArrayList<>(rows.size() - 1);
         for (int index = 1; index < rows.size(); index++) {
+            int number = index + 1;
+            T record;
             try {
-                records.add(Objects.requireNonNull(mapper.fromFields(rows.get(index)), "запис не відновлено"));
-            } catch (DataStorageException exception) {
+                record = mapper.fromFields(rows.get(index));
+            } catch (DataStorageException | RuntimeException exception) {
+                // Неперевірений виняток предметного розбору теж отримує номер запису, а не зупиняє програму без контексту.
+                String reason = exception.getMessage() != null ? exception.getMessage() : exception.toString();
                 throw new DataStorageException(String.format(Locale.ROOT, "запис %d CSV-файла %s: %s",
-                        index + 1, path, exception.getMessage()), exception);
+                        number, path, reason), exception);
             }
+            if (record == null) {
+                throw new DataStorageException(String.format(Locale.ROOT,
+                        "запис %d CSV-файла %s не відновлено: перетворення повернуло null", number, path));
+            }
+            records.add(record);
         }
         return List.copyOf(records);
     }

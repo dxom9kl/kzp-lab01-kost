@@ -69,8 +69,8 @@ jobs:
             exit 1
           fi
           mkdir -p out
-          java -Dstdout.encoding=UTF-8 -jar "$jar" --input data/input.csv --output out/report.txt \
-            --csv out/parcels.csv | tee out/console.txt
+          java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "$jar" --input data/input.csv \
+            --output out/report.txt --csv out/parcels.csv | tee out/console.txt
           if ! tr -d '\r' < out/console.txt | grep -qx 'Round-trip: true'; then
             echo "::error::Записи, відновлені з CSV, відрізняються від записаних"
             exit 1

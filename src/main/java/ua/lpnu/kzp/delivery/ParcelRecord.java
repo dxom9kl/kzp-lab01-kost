@@ -48,7 +48,9 @@ public record ParcelRecord(
     private static final int WEIGHT_KG = 4;
 
     /* Довжина, ширина й висота – додатні цілі числа без нуля на початку, розділені латинською x. */
-    private static final Pattern DIMENSIONS_FORMAT = Pattern.compile("[1-9]\\d*x[1-9]\\d*x[1-9]\\d*");
+    private static final Pattern DIMENSIONS_FORMAT = Pattern.compile("[1-9][0-9]*x[1-9][0-9]*x[1-9][0-9]*");
+    /* Символи числа ваги: цифри 0–9, знак, десяткова крапка й показник степеня. */
+    private static final Pattern ASCII_NUMBER = Pattern.compile("[0-9+\\-.eE]+");
 
     /**
      * Перевіряє інваріанти запису, тому хибний запис неможливо створити.
@@ -136,13 +138,19 @@ public record ParcelRecord(
     }
 
     private static double parseWeightKg(String text) throws DataStorageException {
+        double weightKg;
         try {
-            // BigDecimal приймає лише десятковий запис, зокрема 1.0E7 з Double.toString, а Double.parseDouble
-            // мовчки приймає ще NaN, Infinity, пробіли навколо числа, 2.5d і 0x1p3.
-            return new BigDecimal(text).doubleValue();
+            // BigDecimal приймає десятковий запис зі знаком і показником степеня, зокрема 1.0E7 з Double.toString,
+            // і відхиляє NaN, Infinity, пробіли навколо числа, 2.5d і 0x1p3, які мовчки приймає Double.parseDouble.
+            weightKg = new BigDecimal(text).doubleValue();
         } catch (NumberFormatException exception) {
             throw new DataStorageException("вага не є числом: \"%s\"".formatted(text), exception);
         }
+        // BigDecimal розпізнає й цифри інших писемностей, наприклад «２.５», тому дозволено лише ASCII.
+        if (!ASCII_NUMBER.matcher(text).matches()) {
+            throw new DataStorageException("вага має бути записана цифрами 0–9: \"%s\"".formatted(text));
+        }
+        return weightKg;
     }
 
     private static DeliveryStatus parseStatus(String text) throws DataStorageException {

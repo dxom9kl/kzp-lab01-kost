@@ -93,6 +93,20 @@ class CsvExporterTest {
     record Duplicated(@CsvColumn("назва") String first, @CsvColumn("назва") String second) {
     }
 
+    /* Enum із перевизначеним toString: підпис не відновлюється через valueOf. */
+    enum Size {
+        SMALL;
+
+        @Override
+        public String toString() {
+            return "малий";
+        }
+    }
+
+    /* Запис з полем-enum. */
+    record Box(@CsvColumn("розмір") Size size) {
+    }
+
     /* Статичне поле не належить окремому запису. */
     static final class Counter {
         @CsvColumn("лічильник")
@@ -148,6 +162,12 @@ class CsvExporterTest {
     void nullValueBecomesEmptyField() throws DataStorageException {
         assertEquals("текст" + NL + NL + "\"a,b\"" + NL,
                 CsvExporter.toCsv(Note.class, Arrays.asList(new Note(null), new Note("a,b"))));
+    }
+
+    /* Константа enum записується назвою, яку відновлює valueOf, навіть якщо toString перевизначено. */
+    @Test
+    void writesEnumConstantByName() throws DataStorageException {
+        assertEquals("розмір" + NL + "SMALL" + NL, CsvExporter.toCsv(Box.class, List.of(new Box(Size.SMALL))));
     }
 
     /* Порожній список дає лише заголовок: тому клас записів передається окремим параметром. */

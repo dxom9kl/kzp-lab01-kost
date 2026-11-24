@@ -1,6 +1,7 @@
 package ua.lpnu.kzp.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,6 +9,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ArgumentsParserTest {
     /* Без аргументів програма обробляє файли за замовчуванням. */
@@ -65,5 +67,53 @@ class ArgumentsParserTest {
             assertTrue(usage.contains(option), option);
         }
         assertTrue(usage.endsWith(System.lineSeparator()));
+    }
+
+    /* Без --csv експорту немає; --csv можна задати в будь-якому місці командного рядка. */
+    @Test
+    void readsCsvPath() throws UsageException {
+        assertNull(ArgumentsParser.parse(new String[0]).csv());
+
+        Arguments arguments = ArgumentsParser.parse(new String[] {"--csv", "out/посилки.csv", "--input", "дані.csv"});
+
+        assertEquals(Arguments.Mode.PROCESS, arguments.mode());
+        assertEquals(Path.of("out", "посилки.csv"), arguments.csv());
+        assertEquals(Path.of("дані.csv"), arguments.input());
+        assertEquals(Path.of("out", "report.txt"), arguments.output());
+    }
+
+    /* --csv без шляху відхиляється так само, як інші опції. */
+    @ParameterizedTest(name = "[{index}] {0} → {1}")
+    @CsvSource(delimiter = '|', textBlock = """
+            --csv               | Опція --csv потребує шляху до файла
+            --csv --input a.csv | Опція --csv потребує шляху до файла
+            --csv a.csv --help  | Опцію --help не можна поєднувати з іншими аргументами
+            """)
+    void rejectsCsvWithoutPath(String commandLine, String message) {
+        UsageException exception = assertThrows(UsageException.class,
+                () -> ArgumentsParser.parse(commandLine.split(" ")));
+
+        assertEquals(message, exception.getMessage());
+    }
+
+    /* CSV-експорт не може перезаписати вхідний файл чи звіт, навіть якщо шлях записано інакше. */
+    @ParameterizedTest(name = "[{index}] {0}")
+    @ValueSource(strings = {
+        "--csv data/input.csv",
+        "--csv ./data/../data/input.csv",
+        "--csv out/report.txt",
+        "--output r.txt --csv r.txt"})
+    void rejectsCsvThatWouldOverwriteOtherFiles(String commandLine) {
+        UsageException exception = assertThrows(UsageException.class,
+                () -> ArgumentsParser.parse(commandLine.split(" ")));
+
+        assertTrue(exception.getMessage().startsWith("Файл --csv має відрізнятися від --input і --output"),
+                exception.getMessage());
+    }
+
+    /* Довідка описує нову опцію. */
+    @Test
+    void usageDescribesCsvOption() {
+        assertTrue(ArgumentsParser.usage().contains("--csv <файл>"));
     }
 }

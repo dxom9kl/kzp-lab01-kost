@@ -68,7 +68,32 @@ jobs:
             echo "::error::Тег $GITHUB_REF_NAME не відповідає версії в pom.xml ($version)"
             exit 1
           fi
-          java -Dstdout.encoding=UTF-8 -jar "$jar" --input data/input.csv --output out/report.txt
+          mkdir -p out
+          java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "$jar" --input data/input.csv \
+            --output out/report.txt --csv out/parcels.csv | tee out/console.txt
+          if ! tr -d '\r' < out/console.txt | grep -qx 'Round-trip: true'; then
+            echo "::error::Записи, відновлені з CSV, відрізняються від записаних"
+            exit 1
+          fi
+
+      # CSV у UTF-8: заголовок і 8 записів; кожен рядок завершує роздільник поточної ОС.
+      - name: Check CSV
+        shell: bash
+        run: |
+          header=$(head -n 1 out/parcels.csv | tr -d '\r')
+          lines=$(wc -l < out/parcels.csv | tr -d ' ')
+          cr=$(tr -cd '\r' < out/parcels.csv | wc -c | tr -d ' ')
+          expected_cr=0
+          if [[ "$RUNNER_OS" == "Windows" ]]; then expected_cr=$lines; fi
+          echo "Заголовок: $header; рядків: $lines; символів CR: $cr"
+          if [[ "$header" != "місто,габарити,статус,номер,вага" ]]; then
+            echo "::error::Неочікуваний заголовок CSV: $header"
+            exit 1
+          fi
+          if [[ "$lines" != 9 || "$cr" != "$expected_cr" ]]; then
+            echo "::error::Очікується 9 рядків і $expected_cr символів CR, отримано $lines і $cr"
+            exit 1
+          fi
 
       # Кожна ОС отримує власний артефакт, тому результати не перезаписуються.
       - name: Upload jar
@@ -76,4 +101,12 @@ jobs:
         with:
           name: lab01-${{ matrix.os }}-build-${{ github.run_number }}
           path: target/lab01-*.jar
+          if-no-files-found: error
+
+      # CSV кожної ОС публікується окремо: роздільники рядків у них різні.
+      - name: Upload CSV
+        uses: actions/upload-artifact@v7
+        with:
+          name: parcels-csv-${{ matrix.os }}-build-${{ github.run_number }}
+          path: out/parcels.csv
           if-no-files-found: error

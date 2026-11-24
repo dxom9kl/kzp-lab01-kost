@@ -7,10 +7,10 @@
     <groupId>ua.lpnu.kzp</groupId>
     <artifactId>lab01</artifactId>
     <!-- Єдине джерело версії продукту: програма отримує її під час збірки. -->
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 
     <name>KZP Lab 01: Parcel Delivery</name>
-    <description>Консольна обробка записів про доставлення посилок (КЗП, ЛР № 1–4, варіант 15)</description>
+    <description>Консольна обробка записів про доставлення посилок (КЗП, ЛР № 1–5, варіант 15)</description>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>

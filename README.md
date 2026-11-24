@@ -2,14 +2,16 @@
 
 [![CI](https://github.com/dxom9kl/kzp-lab01-kost/actions/workflows/ci.yml/badge.svg)](https://github.com/dxom9kl/kzp-lab01-kost/actions/workflows/ci.yml)
 
-Лабораторні роботи № 1–4 з курсу «Кросплатформні засоби програмування», варіант 15.
+Лабораторні роботи № 1–5 з курсу «Кросплатформні засоби програмування», варіант 15.
 
 Програма читає записи про доставлення посилок із CSV-файла, перевіряє кожен рядок,
 обчислює чотири показники й записує однаковий звіт у консоль і текстовий файл.
 Хибні рядки не зупиняють роботу: у звіті вказано номер рядка та причину пропуску.
 
-Поточний стан відповідає ЛР № 4: колекцію посилок обробляють запити Stream API, а зовнішня поведінка
-лишилася такою, як у попередніх роботах. Звіти: [ЛР № 4](REPORT.md), [ЛР № 3](reports/lab03.md),
+Поточний стан відповідає ЛР № 5: коректні посилки зберігаються в параметризованому сховищі
+`Repository<T>`, а з опцією `--csv` експортуються в CSV універсальним рефлексивним експортером і
+читаються назад для перевірки round-trip. Без `--csv` поведінка така сама, як у попередніх роботах.
+Звіти: [ЛР № 5](REPORT.md), [ЛР № 4](reports/lab04.md), [ЛР № 3](reports/lab03.md),
 [ЛР № 2](reports/lab02.md), [ЛР № 1](reports/lab01.md).
 
 ## Формат входу
@@ -121,6 +123,75 @@ Record [`WeightDelivery`](src/main/java/ua/lpnu/kzp/delivery/WeightDelivery.java
 | Перелік пропущених рядків | цикл `for` | `map` і `Collectors.joining` |
 | CSV, показники, текст звіту | – | без змін |
 
+## Сховище та CSV-експорт
+
+Пакет [`storage`](src/main/java/ua/lpnu/kzp/storage) не залежить від предметної області:
+
+| Тип | Призначення |
+|---|---|
+| `Repository<T>` | сховище в пам'яті: `add`, незмінний знімок `all()`, пошук `find(Predicate<? super T>)` |
+| `@CsvColumn` | `@Retention(RUNTIME)`, `@Target(FIELD)`, назва стовпця в `value()` |
+| `CsvExporter` | рефлексією знаходить поля з `@CsvColumn` у класі та суперкласах і записує CSV |
+| `CsvParser` | машина станів над усім документом: кома й перенесення рядка в лапках належать полю |
+| `CsvImporter` | читає файл, перевіряє заголовок і передає поля кожного запису предметному розбору |
+| `DataStorageException` | checked-виняток; першопричина доступна через `getCause()` |
+
+`DeliveryController` і `DeliverySummary` зберігають посилки в `Repository<Parcel>`. Для експорту кожна
+посилка перетворюється на плоский record [`ParcelRecord`](src/main/java/ua/lpnu/kzp/delivery/ParcelRecord.java):
+
+| Поле | Тип | CSV-стовпець | Правило |
+|---|---|---|---|
+| `trackingNumber` | String | `номер` | непорожній; ключ round-trip |
+| `weightKg` | double | `вага` | скінченне число, більше нуля |
+| `dimensions` | String | `габарити` | `ДxШxВ` у см (`30x20x15`) або порожньо, якщо не вказано |
+| `city` | String | `місто` | непорожнє |
+| `status` | `DeliveryStatus` | `статус` | `DELIVERED` або `IN_TRANSIT` |
+
+Вхідний файл не містить габаритів, тому для посилок із нього поле `габарити` порожнє, а статус
+обчислюється за розрахунковим терміном, як у ЛР № 4.
+
+**Формат CSV.** UTF-8 без BOM, роздільник – кома, перший рядок – заголовок із `@CsvColumn`. Стовпці
+впорядковано за Java-іменами полів (`city`, `dimensions`, `status`, `trackingNumber`, `weightKg`), тому
+заголовок такий: `місто,габарити,статус,номер,вага`. Значення з комою, лапкою або перенесенням рядка
+береться в лапки, а лапка всередині подвоюється: `"Одеса, відділення ""Центральне"""`. Записи завершує
+роздільник рядка ОС: CRLF у Windows, LF у Linux і macOS. Парсер приймає обидва варіанти.
+
+Початок CSV, створеного з `data/input.csv`, і запис контрольного набору тестів із комою в місті:
+
+```text
+місто,габарити,статус,номер,вага
+Львів,,DELIVERED,UA-1001,2.5
+Київ,,DELIVERED,UA-1002,0.75
+Одеса,,IN_TRANSIT,UA-1003,12.4
+
+"Біла Церква, Київська обл.",25x25x10,DELIVERED,UA-5003,0.75
+```
+
+**Round-trip.** Після запису програма читає файл через `Files.readString` в UTF-8, розбирає його
+`CsvParser`, перевіряє заголовок, відновлює записи `ParcelRecord.fromFields` і порівнює список із
+записаним через `equals`.
+
+**Помилки.** Програма не поглинає винятків: повідомлення називає операцію, файл або номер запису, а
+першопричина лишається в ланцюгу `getCause()`.
+
+| Рівень | Приклад | Реакція |
+|---|---|---|
+| Модель | порожнє місто, вага `0`, габарити `30x20` | `IllegalArgumentException` у конструкторі |
+| Формат | 4 поля замість 5, незакриті лапки, інший заголовок, порожній файл | `DataStorageException` |
+| Значення | вага `важка`, статус `LOST` | `DataStorageException` з `NumberFormatException` або `IllegalArgumentException` |
+| Файл | каталог замість файла, відсутній файл, не UTF-8 | `DataStorageException` з `IOException` |
+| Рефлексія | немає полів `@CsvColumn`, повторна назва стовпця, немає доступу | `DataStorageException` |
+
+Відмінності від ЛР № 4:
+
+| Частина | ЛР № 4 | ЛР № 5 |
+|---|---|---|
+| Зберігання посилок | `List<Parcel>` | `Repository<Parcel>` |
+| Збереження даних | лише текстовий звіт | ще й CSV з опцією `--csv` |
+| Метадані стовпців | – | анотація `@CsvColumn` |
+| Помилки зберігання | – | `DataStorageException` із причиною |
+| Вхідний формат, показники, текст звіту | – | без змін |
+
 ## Збірка
 
 Потрібен JDK 21. Maven установлювати не треба: Maven Wrapper сам завантажить версію,
@@ -136,21 +207,25 @@ mvnw.cmd clean verify        # Windows
 ## Запуск
 
 ```text
-java -jar target/lab01-1.3.0.jar
-java -jar target/lab01-1.3.0.jar --input data/input.csv --output out/report.txt
-java -jar target/lab01-1.3.0.jar --help
-java -jar target/lab01-1.3.0.jar --version
+java -jar target/lab01-1.4.0.jar
+java -jar target/lab01-1.4.0.jar --input data/input.csv --output out/report.txt
+java -jar target/lab01-1.4.0.jar --input data/input.csv --output out/report.txt --csv out/parcels.csv
+java -jar target/lab01-1.4.0.jar --help
+java -jar target/lab01-1.4.0.jar --version
 ```
 
 | Аргумент | Призначення | За замовчуванням |
 |---|---|---|
 | `--input <файл>` | вхідний CSV-файл | `data/input.csv` |
 | `--output <файл>` | файл звіту | `out/report.txt` |
+| `--csv <файл>` | записати коректні посилки в CSV і перевірити round-trip | експорту немає |
 | `--help` | довідка | |
 | `--version` | версія з `pom.xml` і номер збірки | |
 
-Коди завершення: `0` – успіх; `1` – файл не знайдено, не прочитано чи не записано або в
-ньому немає жодного коректного запису; `2` – помилка в аргументах.
+Файл `--csv` має відрізнятися від вхідного файла й файла звіту, інакше програма завершується кодом `2`.
+
+Коди завершення: `0` – успіх; `1` – файл не знайдено, не прочитано чи не записано, у ньому
+немає жодного коректного запису або CSV не вдалося записати чи відновити; `2` – помилка в аргументах.
 
 У консолі Windows перед запуском виконайте `chcp 65001`, інакше частина українських
 літер може вивестися як `?`. Файл звіту завжди записується в UTF-8.
@@ -158,7 +233,7 @@ java -jar target/lab01-1.3.0.jar --version
 ## Приклад
 
 ```text
-$ java -jar target/lab01-1.3.0.jar
+$ java -jar target/lab01-1.4.0.jar
 Звіт: доставлення посилок
 Вхідний файл: data/input.csv
 
@@ -178,30 +253,44 @@ $ java -jar target/lab01-1.3.0.jar
 Звіт записано у файл: out/report.txt
 ```
 
+З опцією `--csv out/parcels.csv` після звіту виводяться ще три рядки:
+
+```text
+CSV записано у файл: out/parcels.csv
+Відновлених із CSV записів: 8
+Round-trip: true
+```
+
 ## Структура
 
 ```text
 src/main/java/ua/lpnu/kzp/
 ├── Main.java                 точка входу: парсер аргументів → контролер → код завершення
-├── DeliveryController.java   керує обробкою: файл → List<Parcel> → показники → звіт
+├── DeliveryController.java   керує обробкою: файл → Repository<Parcel> → показники → звіт → CSV
 ├── ExitCode.java             коди завершення
 ├── BuildInfo.java            версія з pom.xml і номер збірки
 ├── cli/                      Arguments, ArgumentsParser, UsageException
 ├── delivery/                 Parcel, RegularParcel, ExpressParcel, DeliveryKind, DeliveryStatus,
-│                             ParcelQueries, WeightDelivery, DeliverySummary
-└── report/                   ReportFormatter, FileReport
+│                             ParcelQueries, WeightDelivery, DeliverySummary, ParcelRecord
+├── report/                   ReportFormatter, FileReport
+└── storage/                  Repository, CsvColumn, CsvExporter, CsvParser, CsvImporter,
+                              DataStorageException
 ```
+
+Контрольні CSV-файли тестів лежать у [`src/test/resources/lab05`](src/test/resources/lab05): шість записів
+із комою, лапками й перенесенням рядка, файл із хибним рядком і файл лише із заголовком.
 
 ## Версія
 
 Версію продукту записано лише в `pom.xml`. Під час збірки Maven підставляє її у
-`version.properties`, а `--version` додає номер збірки: `1.3.0+local` для локальної
-збірки і `1.3.0+<N>` у CI, де `N` – номер запуску GitHub Actions. Стан лабораторних робіт
-позначено Git-тегами: № 1 – `v1.0.0`, № 2 – `v1.1.0`, № 3 – `v1.2.0`, № 4 – `v1.3.0`.
+`version.properties`, а `--version` додає номер збірки: `1.4.0+local` для локальної
+збірки і `1.4.0+<N>` у CI, де `N` – номер запуску GitHub Actions. Стан лабораторних робіт
+позначено Git-тегами: № 1 – `v1.0.0`, № 2 – `v1.1.0`, № 3 – `v1.2.0`, № 4 – `v1.3.0`, № 5 – `v1.4.0`.
 
 ## CI
 
 [GitHub Actions](.github/workflows/ci.yml) на кожен Pull Request, push у `main` і тег `v*`
 запускає `verify` на `ubuntu-latest`, `windows-latest` і `macos-latest`, перевіряє вивід
-`--version`, запускає jar на `data/input.csv` і публікує jar як артефакт
-`lab01-<ОС>-build-<N>`.
+`--version`, запускає jar на `data/input.csv` з `--csv`, перевіряє round-trip, заголовок, кількість
+рядків і роздільники рядків CSV та публікує артефакти `lab01-<ОС>-build-<N>` (jar) і
+`parcels-csv-<ОС>-build-<N>` (створений CSV).

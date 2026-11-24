@@ -1,18 +1,19 @@
 package ua.lpnu.kzp.delivery;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import ua.lpnu.kzp.storage.Repository;
 
 /**
  * Обчислює показники варіанта за коректними посилками: кількість записів, середню вагу,
  * найбільший термін доставлення, кількість експрес-доставлень і загальну вартість.
  *
- * <p>Клас зберігає посилки спільного типу {@link Parcel}, а показники за їхніми значеннями обчислює
- * потоковими запитами {@link ParcelQueries}, тому новий підтип посилки не потребує його змін.
+ * <p>Клас зберігає посилки спільного типу {@link Parcel} у сховищі {@link Repository}, а показники обчислює
+ * потоковими запитами {@link ParcelQueries} над його незмінним знімком, тому новий підтип посилки не
+ * потребує змін цього класу.
  */
 public final class DeliverySummary {
-    private final List<Parcel> parcels = new ArrayList<>();
+    private final Repository<Parcel> parcels = new Repository<>();
 
     /** Створює порожній набір показників. */
     public DeliverySummary() {
@@ -55,7 +56,7 @@ public final class DeliverySummary {
      * @return {@code true}, якщо коректних записів немає
      */
     public boolean isEmpty() {
-        return parcels.isEmpty();
+        return parcels.size() == 0;
     }
 
     /**
@@ -64,7 +65,7 @@ public final class DeliverySummary {
      * @return середня вага в кілограмах або {@code 0.0}, якщо записів немає
      */
     public double averageWeightKg() {
-        return ParcelQueries.totals(parcels).averageWeightKg();
+        return ParcelQueries.totals(parcels.all()).averageWeightKg();
     }
 
     /**
@@ -73,7 +74,7 @@ public final class DeliverySummary {
      * @return термін у днях або {@code 0}, якщо записів немає
      */
     public int maxDeliveryDays() {
-        return ParcelQueries.totals(parcels).maxDeliveryDays();
+        return ParcelQueries.totals(parcels.all()).maxDeliveryDays();
     }
 
     /**
@@ -82,7 +83,7 @@ public final class DeliverySummary {
      * @return ідентифікатор або порожній рядок, якщо записів немає
      */
     public String longestDeliveryId() {
-        return ParcelQueries.longestDelivery(parcels).map(Parcel::getId).orElse("");
+        return ParcelQueries.longestDelivery(parcels.all()).map(Parcel::getId).orElse("");
     }
 
     /**
@@ -91,7 +92,7 @@ public final class DeliverySummary {
      * @return назва міста або порожній рядок, якщо записів немає
      */
     public String longestDeliveryCity() {
-        return ParcelQueries.longestDelivery(parcels).map(Parcel::getCity).orElse("");
+        return ParcelQueries.longestDelivery(parcels.all()).map(Parcel::getCity).orElse("");
     }
 
     /**
@@ -110,7 +111,7 @@ public final class DeliverySummary {
      * @return кількість посилок цього виду
      */
     public int countOf(DeliveryKind kind) {
-        return ParcelQueries.countByKind(parcels).getOrDefault(kind, 0L).intValue();
+        return ParcelQueries.countByKind(parcels.all()).getOrDefault(kind, 0L).intValue();
     }
 
     /**
@@ -119,6 +120,6 @@ public final class DeliverySummary {
      * @return вартість у гривнях або {@code 0.0}, якщо записів немає
      */
     public double totalCost() {
-        return ParcelQueries.totalCost(parcels);
+        return ParcelQueries.totalCost(parcels.all());
     }
 }

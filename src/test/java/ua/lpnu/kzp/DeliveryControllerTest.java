@@ -160,4 +160,67 @@ class DeliveryControllerTest {
         assertEquals(ExitCode.DATA_ERROR, code);
         assertTrue(errBuffer.toString(StandardCharsets.UTF_8).contains("має бути в кодуванні UTF-8"));
     }
+
+    /* --csv: коректні посилки записуються в CSV, читаються назад і дорівнюють записаним. */
+    @Test
+    void exportsValidParcelsToCsv() throws IOException {
+        Path csv = directory.resolve("csv").resolve("parcels.csv");
+
+        int code = new DeliveryController(Path.of("data", "input.csv"), directory.resolve("report.txt"), csv)
+                .run(out, err);
+
+        assertEquals(ExitCode.OK, code);
+        List<String> lines = Files.readAllLines(csv, StandardCharsets.UTF_8);
+        assertEquals(9, lines.size());
+        assertEquals("місто,габарити,статус,номер,вага", lines.get(0));
+        assertEquals("Кам'янець-Подільський,,IN_TRANSIT,UA-1007,3.1", lines.get(7));
+        String console = outBuffer.toString(StandardCharsets.UTF_8);
+        assertTrue(console.endsWith("CSV записано у файл: %s%nВідновлених із CSV записів: 8%nRound-trip: true%n"
+                .formatted(csv)), console);
+        assertEquals("", errBuffer.toString(StandardCharsets.UTF_8));
+    }
+
+    /* Експорт у CSV не змінює звіту: файл звіту такий самий, як без --csv. */
+    @Test
+    void csvExportKeepsReportUnchanged() throws IOException {
+        Path input = Path.of("data", "input.csv");
+
+        new DeliveryController(input, directory.resolve("plain.txt")).run(out, err);
+        new DeliveryController(input, directory.resolve("with-csv.txt"), directory.resolve("parcels.csv")).run(out, err);
+
+        assertEquals(Files.readString(directory.resolve("plain.txt"), StandardCharsets.UTF_8),
+                Files.readString(directory.resolve("with-csv.txt"), StandardCharsets.UTF_8));
+    }
+
+    /* Помилку запису CSV видно в потоці помилок разом із першопричиною, а код завершення – 1. */
+    @Test
+    void reportsCsvErrorWithCause() throws IOException {
+        Path folder = Files.createDirectory(directory.resolve("parcels.csv"));
+        Path input = directory.resolve("input.csv");
+        Files.write(input, List.of("UA-1;2.00;Львів;1;true"), StandardCharsets.UTF_8);
+
+        int code = new DeliveryController(input, directory.resolve("report.txt"), folder).run(out, err);
+
+        assertEquals(ExitCode.DATA_ERROR, code);
+        String errors = errBuffer.toString(StandardCharsets.UTF_8);
+        assertTrue(errors.startsWith("Помилка CSV: не вдалося записати CSV-файл %s%n  причина: java.nio.file."
+                .formatted(folder)), errors);
+        assertTrue(hasLine(report(), "Коректних записів\\s+1"), report());
+    }
+
+    /* Без коректних посилок CSV містить лише заголовок, а код завершення лишається 1. */
+    @Test
+    void noValidParcelsGiveHeaderOnlyCsv() throws IOException {
+        Path input = directory.resolve("input.csv");
+        Files.write(input, List.of("UA-1;0;Київ;1;false"), StandardCharsets.UTF_8);
+        Path csv = directory.resolve("parcels.csv");
+
+        int code = new DeliveryController(input, directory.resolve("report.txt"), csv).run(out, err);
+
+        assertEquals(ExitCode.DATA_ERROR, code);
+        assertEquals(List.of("місто,габарити,статус,номер,вага"), Files.readAllLines(csv, StandardCharsets.UTF_8));
+        String console = outBuffer.toString(StandardCharsets.UTF_8);
+        assertTrue(console.contains("Відновлених із CSV записів: 0"), console);
+        assertTrue(console.contains("Round-trip: true"), console);
+    }
 }

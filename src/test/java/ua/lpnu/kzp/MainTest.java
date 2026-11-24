@@ -71,4 +71,17 @@ class MainTest {
         assertTrue(hasLine(report, "Експрес-доставлень\\s+4"), report);
         assertTrue(out().startsWith(report), out());
     }
+
+    /* --csv записує коректні посилки прикладу в CSV і повідомляє результат round-trip. */
+    @Test
+    void exportsSampleDataToCsv(@TempDir Path directory) throws IOException {
+        Path csv = directory.resolve("parcels.csv");
+
+        assertEquals(ExitCode.OK, run("--input", "data/input.csv", "--output", directory.resolve("report.txt").toString(),
+                "--csv", csv.toString()));
+
+        assertEquals(9, Files.readAllLines(csv, StandardCharsets.UTF_8).size());
+        assertTrue(hasLine(out(), "Відновлених із CSV записів: 8"), out());
+        assertTrue(hasLine(out(), "Round-trip: true"), out());
+    }
 }

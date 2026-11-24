@@ -52,7 +52,8 @@ public final class Main {
                 out.printf("%s%n", BuildInfo.version());
                 yield ExitCode.OK;
             }
-            case PROCESS -> new DeliveryController(arguments.input(), arguments.output()).run(out, err);
+            case PROCESS -> new DeliveryController(arguments.input(), arguments.output(), arguments.csv())
+                    .run(out, err);
         };
     }
 }
